@@ -1,0 +1,276 @@
+---
+title: "DA3_1_paziczki_peter_161117"
+author: "Peter Paziczki"
+date: '2017 november 12'
+output: html_document
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+rm(list=ls())
+knitr::opts_chunk$set(echo = FALSE) ## I don't want to print the code itself, so I set echo to FALSE
+```
+
+```{r initials}
+library(data.table)
+#install.packages("knitr")
+library(knitr)
+library(ggplot2)
+#install.packages('ggthemes')
+library(ggthemes)
+library(pander)
+#install.packages("lspline")
+library(lspline)
+hotels <- fread('hotels_all_nov21.csv', encoding = 'UTF-8')
+```
+
+
+# DA3 assignment #1
+
+Individual assignment
+
+## Problem 1.1
+
+Download hotels_all_nov21.csv. Pick a city. Consider hotels and hostels. Consider all with at least 2 stars. You have 7 tasks (1p each):
+
+### 1. Filter the data to the city of your choice and other characteristcs (stars, accomodaton type) . Describe the distributon of the price and distance variables. Comment on graphs. (1-2 sentences)
+
+```{r exercise 1, results='hide'}
+# number of accommodations in different cities
+table(hotels$city)
+
+# choosing Rome to investigate
+Rome <- hotels[city == "Rome"]
+
+# just out of curiosity, number of accommodations in different neighbourhoods in Rome
+hotels[,.N, by = neighbourhood]
+hotels[city == "Rome" & accommodation_type == "Hotel" & stars %in% c("0","1"),.N]
+# number of accommodation types in Rome
+hotels[city == "Rome", .N, by = accommodation_type] 
+
+# number of hotels and hostels in Rome
+n <- hotels[city == "Rome" & accommodation_type %in% c("Hotel","Hostel"), .N] 
+n_hotels <- hotels[city == "Rome" & accommodation_type == "Hotel", .N] # number of hotels in Rome
+n_hostels <- hotels[city == "Rome" & accommodation_type == "Hostel", .N] # number of hostels in Rome
+
+# filtering to hotels and hostels
+Rome <- Rome[accommodation_type %in% c("Hotel","Hostel")] 
+
+# distribution of hotels and hostels by stars variable
+table(Rome$stars)
+
+# dropping hotels and hostels with less than 2 stars
+Rome <- Rome[stars > 1]
+
+# Check if any observations are duplicated in the raw database, and drop the duplicated series
+Rome <- Rome[!duplicated(Rome),]
+
+# dropping columns that I won't use for the investigation
+str(Rome)
+Rome <- Rome[,c("name", "price", "stars", "distance", "accommodation_type", "neighbourhood", "rating")]
+summary(Rome)
+Rome[accommodation_type == "Hostel",.N]
+```
+
+I chose Rome to investigate. There are `r hotels[city == "Rome" & accommodation_type %in% c("Hotel","Hostel"), .N]` different accommodations in town, of which `r hotels[city == "Rome" & accommodation_type == "Hotel", .N]` are hotels and `r hotels[city == "Rome" & accommodation_type == "Hostel", .N]` are hostels. I dropped the hotels and hostels that have less than 2 stars, meaning that `r hotels[city == "Rome" & accommodation_type == "Hotel" & stars %in% c("0","1"),.N]` hotels and `r hotels[city == "Rome" & accommodation_type == "Hostel" & stars %in% c("0","1"),.N]` hostels have been dropped. Basically we dropped all the hostels from the data, so we have `r Rome[,.N]` hotels to investigate.
+
+I created a histogram of price variable not grouping it by the nuber of stars:
+```{r}
+ggplot(Rome, aes(price)) + geom_histogram() + labs(title = "Histogram of price variable", x = "price variable", y = "number of accommodations")
+```
+
+We can see that the histogram shows us a log normal like distribution that is skewed to the right with a long tail. The range of price variable is quite big, there are a few obvservations in the 1050-1200EUR price range. The most observation can be found in the 0-150EUR range.
+
+Let's see the distribution of accommodations by the number of stars:
+```{r}
+pander(Rome[,.N, by = stars])
+```
+We can see that the most of the variables have 3 or 4 stars, and only a smaller fraction of accommodations have other star ratings.
+
+Let's have a look at the histograms of price variable by the number of stars.
+```{r}
+ggplot(Rome[stars==2], aes(price)) + geom_histogram() + labs(title = "Histogram of price variable", subtitle = "number of stars is 2", x = "price variable", y = "number of accommodations")
+ggplot(Rome[stars==3], aes(price)) + geom_histogram() + labs(title = "Histogram of price variable", subtitle = "number of stars is 3", x = "price variable", y = "number of accommodations")
+ggplot(Rome[stars==3.5], aes(price)) + geom_histogram() + labs(title = "Histogram of price variable", subtitle = "number of stars is 3.5", x = "price variable", y = "number of accommodations")
+ggplot(Rome[stars==4], aes(price)) + geom_histogram() + labs(title = "Histogram of price variable", subtitle = "number of stars is 4", x = "price variable", y = "number of accommodations")
+ggplot(Rome[stars==5], aes(price)) + geom_histogram() + labs(title = "Histogram of price variable", subtitle = "number of stars is 5", x = "price variable", y = "number of accommodations")
+```
+
+There are only `r Rome[stars == 3.5,.N]` observations with star 3.5, it has a Bernoulli like distribution. But in all the other four cases the histograms show us log normal like distributions that are skewed to the right. In all cases we can observe more extreme values.
+
+We need to assess the distribution by distance instead of price. 
+
+```{r}
+ggplot(Rome, aes(distance)) + geom_histogram() + labs(title = "Histogram of distance variable", x = "distance variable", y = "number of accommodations")
+```
+
+We can see that the distribution has a log normal like distribution with quite a long right tail. The range is more than 15km. There are only a few observation in the far range 10-12.5km. Most of the observations are in the first bin in the 0-2.5km range.
+
+Now let's have a look at the distribution of distance variable grouped by the number of stars.
+
+```{r}
+ggplot(Rome[stars==2], aes(distance)) + geom_histogram() + labs(title = "Histogram of distance variable", subtitle = "number of stars is 2", x = "distance variable", y = "number of accommodations")
+ggplot(Rome[stars==3], aes(distance)) + geom_histogram() + labs(title = "Histogram of distance variable", subtitle = "number of stars is 3", x = "distance variable", y = "number of accommodations")
+ggplot(Rome[stars==3.5], aes(distance)) + geom_histogram() + labs(title = "Histogram of distance variable", subtitle = "number of stars is 3.5", x = "distance variable", y = "number of accommodations")
+ggplot(Rome[stars==4], aes(distance)) + geom_histogram() + labs(title = "Histogram of distance variable", subtitle = "number of stars is 4", x = "distance variable", y = "number of accommodations")
+ggplot(Rome[stars==5], aes(distance)) + geom_histogram() + labs(title = "Histogram of distance variable", subtitle = "number of stars is 5", x = "distance variable", y = "number of accommodations")
+```
+
+In case of 5 star hotels there are no observation in the 2.5-12.5km range at all. The hotels with 3.5 stars have the same Bernoulli like distribution as they had when assessing the price variable. In the other cases the distributions seem to be log normal like and are skewed to the right.
+
+```{r}
+# ggplot(Rome, aes(factor(stars), price)) + geom_boxplot() + labs(title = "Box-plot of price variable", subtitle = "investigated by number of stars", x = "number of stars", y = "price of accommodations")
+```
+
+### 2. Sample defniton: You may or may not want to drop some observatons; make a choice and argue for it (1-2 sentences).
+
+Let's have a look at the scatterplot:
+
+```{r}
+ggplot(Rome, aes(distance, price)) + geom_point() + labs(title = "Scatterplot", subtitle = "Hotels with more than 1 stars", x = "distance variable", y = "price variable")
+```
+
+There are hotels that are far from the city center, they can be in the suburbs or in the agglomeration, I will exclude them. Furthermore there are only a few observations far from the city center, I will focus on the denser areas. The more observation we have, the better statistics we can create. I will narrow the investigation down to hotels with 3, 3.5 and 4 stars.
+
+```{r}
+# dropping the observations that have 2 of 5 stars
+Rome_2 <- Rome[stars>=3 & stars<=4]
+# dropping observation that are further than 10km
+Rome_2 <- Rome_2[distance<10]
+
+ggplot(Rome_2, aes(distance, price)) + geom_point() + labs(title = "Scatterplot", subtitle = "Hotels with more than 3, 3.5 and 4 stars", x = "distance variable", y = "price variable")
+```
+
+### 3. Create a binary variable of distance (below/above cutoﬀ of your choice) and regress price on this binary variable. Report, interpret and visualize the results. (1-2 sentences)
+
+I chose the cutoff to be at 2km. All the hotels that are closer to city center thank 2km will be marked as *Close*, and *far* otherwise.
+
+```{r, results='hide'}
+Rome_3 <- Rome_2[,dist2:=ifelse(distance>=2,"Far","Close")]
+
+# `:=` calculate the conditional mean (integer and non-integer) and add the values as a new observations
+Rome_3 <- Rome_3[,`:=`(avgprice= round(as.numeric(mean(price),digits = 2)),
+                       Eprice_cat2 = as.numeric(mean(price)) ),by = dist2]
+
+# here we got only the conditional means
+dist2 <- Rome_3[,.(avgprice= round(as.numeric(mean(price),digits = 2)),
+                   Eprice_cat2 = as.numeric(mean(price)) ),by = dist2]
+
+pander(dist2)
+
+# Similarly to the previous case, but more descriptives
+distance_grouped<-Rome_3[,.(mean_dist = mean(distance) , sd_dist = sd(distance), min_dist = min(distance) ,
+                            max_dist = max(distance), n=.N ),by = dist2]
+
+price_grouped<-Rome_3[,.(mean_price = mean(price) , sd_price = sd(price), min_price = min(price) ,
+                         max_price = max(price), n=.N ), by=dist2]
+```
+
+```{r}
+# FIGURE: PLOT MEAN VALUES BY CLOSE VS FAR
+ymax<-400 # use it as a maximum value for y-axis
+ggplot(data = dist2, aes(x=dist2, y=avgprice),label=avgprice) + 
+  geom_point(size=3,shape=23,fill="blue")+
+  geom_text(aes(label=avgprice),hjust=-1,vjust=0)+
+  ylim(0,ymax)+
+  labs(x="Distance to city center (categories)",y="Average hotel price")+
+  theme_bw()
+ggsave("R_F2_1_1.png")
+
+# FIGURE: BOX PLOT BY CLOSE VS FAR
+ymax<-300
+
+ggplot(data = Rome_3, aes(x=dist2, y=price)) + 
+  geom_boxplot(outlier.shape = NA, fill="grey",border="black",fatten=0)+
+  labs(y="Average hotel price")+
+  ylim(0,ymax)+
+  stat_summary(fun.y = median, geom = "point",size=4, shape = 23, fill="yellow", color="yellow")+
+  theme_bw()+
+  theme(axis.title.x=element_blank())
+ggsave("R_F2_1_1b.png")
+```
+
+### 4. Estmate a lowess nonparametric regression of price on distance. Report, interpret and visualize the results. (1-2 sentences)
+
+```{r}
+ggplot(data = Rome_3, aes(x=distance, y=price)) +
+  geom_point(size=1.5, colour="orange", shape=4) +
+  ylim(0,300)+
+  xlim(0,7)+
+  geom_smooth(method="loess", colour="darkgreen", se=F)+
+  labs(x="Distance to city center (km)",y="Hotel price (EUR)")+
+  theme_bw()
+ggsave("R_F2_1_5.png")
+```
+
+### 5. Estimate a simple linear regression of price on distance. Report, interpret and visualize the results. (1-2 sentences)
+
+```{r, results='hide'}
+# covariance btw price and distance
+cov_xy=cov(Rome_3$price,Rome_3$distance)
+
+# variance btw price 
+var_x=var(Rome_3$distance)
+var_y=var(Rome_3$price)
+
+# beta 
+beta=cov_xy/var_x
+
+# alpha
+alpha = mean(Rome_3$price)-beta*mean(Rome_3$distance)
+
+# R2
+Rome_3$resid <- Rome_3$price-(alpha+beta*Rome_3$distance)
+R2=1-(var(Rome_3$resid)/var_y)
+
+# correlation
+corr_xy=cov_xy/(sqrt(var_x*var_y))
+# or corr_xy=beta*sqrt(var_x/var_y)
+
+# We can derive all these steps above by lm(...) function
+regression <- lm(price ~ distance, data=Rome_3)
+summary(regression)
+```
+
+```{r}
+####SCATTERPLOT + REGRESSION LINE
+ggplot(data = Rome_3, aes(x=distance, y=price)) +
+  geom_point(size=1.5, colour="orange",shape=4) +
+  geom_smooth(method="lm", colour="navy", se=FALSE)+ # se = FALSE - we dont want to see the confidence interval
+  ylim(0,400)+
+  xlim(0,7)+
+  labs(x="Distance to city center (km)",y="Hotel price (EUR)")+
+  theme_bw()
+ggsave("R_F2_1_6plain.png")
+```
+
+### 6. Estmate a linear regression of price on distance that captures potental nonlinearites (polynomials, splies). Report, interpret and visualize the results. (1-2 sentences)
+
+```{r}
+# lspline: Piecewise linear spline with one knot (distance=2)
+reg4 <- lm(price ~ lspline(distance, 2), data=Rome_3)
+summary(reg4)
+Rome_3$pred4<-predict(reg4)
+
+ggplot(data = Rome_3, aes(x=distance, y=price)) +
+  geom_point(size=1.5, colour="orange",shape=4) +
+  labs(x="Distance to city center (km)",y="Hotel price (EUR)")+
+  geom_line(data=Rome_3,aes(x=distance,y=pred4),colour="blue")+
+  geom_vline(xintercept=2,colour="red")
+ggsave("F8_4_R.png")
+
+#### with 2 knots 
+reg5 <- lm(price ~ lspline(distance, c(1,4)), data=Rome_3)
+summary(reg5)
+Rome_3$pred5<-predict(reg5)
+
+ggplot(data = Rome_3, aes(x=distance, y=price)) +
+  geom_point(size=1.5, colour="orange",shape=4) +
+  labs(x="Distance to city center (km)",y="Hotel price (EUR)")+
+  geom_line(data=Rome_3,aes(x=distance,y=pred5),colour="blue")+
+  geom_vline(xintercept=1,colour="red")+
+  geom_vline(xintercept=4,colour="red")
+ggsave("F8_5_R.png")
+```
+
+### 7. Discuss your overall fndings. (2-3 sentences)
+
