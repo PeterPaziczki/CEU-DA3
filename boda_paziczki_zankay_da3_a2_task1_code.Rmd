@@ -9,22 +9,38 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+DA3 Assignment #2
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Problem2.1
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Download cross-country data on life expectancy and GDP per capita. 
+“GDP per capita, PPP (constant)” and “Life expectancy at birth (total)”
 
-```{r cars}
-summary(cars)
-```
+1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do. 
 
-## Including Plots
+2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results. 
 
-You can also embed plots, for example:
+3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+Problem 2.2
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Download hotels_all_nov21.csv. Pick a city. Consider hotels and hostels. Consider all with at least 2 stars. You have 6 tasks (1p each). 
+The goal of the exercise is to use information you have in your data to find a shortlist of five hotels and/or hostels that are good candidates for a good deal. You have to estimate a regression of prices (or log prices) on the other variables of your choice. You have to document your analysis and print the shortlist. 
+
+1. Pick a set of variables. Describe all variables used in the analysis.
+
+2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
+
+3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
+
+4. Pick two slope coefficients, interpret them, and compute and interpret their 95% CI. 
+
+5. Describe your strategy to find the best deal. 
+
+6. List the hotels with the smallest (most negative) residuals. List their prices and other characteristics as well. Comment on the results. 
+
+Problem 2.3
+
+- Pick another city.
+
+- Estimate the model of your choice in the previous exercise (ie the exact same dependent variables, same functional form) for another city of your choice. Discuss your finding.
