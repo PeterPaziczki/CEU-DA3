@@ -1,6 +1,10 @@
 ---
 title: "DA3_2"
-author: "PeterPaziczki"
+author: 
+- name: "Peter_Paziczki"
+- name: "Imre_Boda"
+- name: "Balazs_Zankay"
+  affiliation: University of Nowhere
 date: '2017 november 18 '
 output: html_document
 ---
