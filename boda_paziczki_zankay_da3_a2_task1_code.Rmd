@@ -44,3 +44,5 @@ Problem 2.3
 - Pick another city.
 
 - Estimate the model of your choice in the previous exercise (ie the exact same dependent variables, same functional form) for another city of your choice. Discuss your finding.
+
+test
