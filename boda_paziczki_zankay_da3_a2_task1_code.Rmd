@@ -4,13 +4,12 @@ author:
 - name: "Peter_Paziczki"
 - name: "Imre_Boda"
 - name: "Balazs_Zankay"
-  affiliation: University of Nowhere
 date: '2017 november 18 '
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```
 
 DA3 Assignment #2
