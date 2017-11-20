@@ -1,11 +1,14 @@
 ---
 title: "DA3_2"
-author: 
-- name: "Peter_Paziczki"
-- name: "Imre_Boda"
-- name: "Balazs_Zankay"
+author:
+- name: Peter_Paziczki
+- name: Imre_Boda
+- name: Balazs_Zankay
 date: '2017 november 18 '
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
 ---
 
 ```{r global_options, include=FALSE}
@@ -26,14 +29,16 @@ Problem2.1
 Download cross-country data on life expectancy and GDP per capita. 
 “GDP per capita, PPP (constant)” and “Life expectancy at birth (total)”
 
+We have downloaded both the above mentioned indicators for 2014, storing them in two separate csv files, GDP_per_capita_2014-Data.csv and Life_expectancy_at_birth_2014-Data.csv.
+
 1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do.
 
 ```{r}
-# Joining the two tables by Country name column
+# Joining the two tables by Country name column.
 
 # Settin the ON clause as keys of the tables:
-setkey(GDP, "Country Name")
-setkey(Life,"Country Name")
+setkey(GDP, `Country Name`)
+setkey(Life, `Country Name`)
 # performing the join, eliminating not matched rows from Right
 Data_raw <- Life[GDP, nomatch=0]
 
@@ -42,11 +47,14 @@ Data <- Data_raw[, -c(1,2,4,6:8), with =F]
 # renaming country name, life expectancy and GDP per capita columns for easier usage
 names(Data) <- c("country", "life", "GDP")
 
-# Dropping the rows where there is no country, and dropping countries where life expectancy and GPD is missing
+# Dropping the obsevórvations where there is no country, and dropping countries where life expectancy and/or GPD are missing
 Data <- Data[!(Data$country=="")]
 Data <- Data[!(Data$life==".."), ]
 Data <- Data[!(Data$GDP==".."), ]
+n <- Data_raw[`Country Name` != "",.N] # number of countries in the original data set
 ```
+
+We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` countries of the `r n` left to analyze.
 
 2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results. 
 
