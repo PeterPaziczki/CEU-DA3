@@ -9,12 +9,14 @@ output: html_document
 ---
 
 ```{r global_options, include=FALSE}
+rm(list=ls())
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```
 
 ```{r}
-GDP <- read.csv('GDP_per_capita_2014-Data.csv', encoding = 'UTF-8')
-Life <- read.csv('Life_expectancy_at_birth_2014-Data.csv', encoding = 'UTF-8')
+library(data.table)
+GDP <- fread('GDP_per_capita_2014-Data.csv', encoding = 'UTF-8')
+Life <- fread('Life_expectancy_at_birth_2014-Data.csv', encoding = 'UTF-8')
 ```
 
 DA3 Assignment #2
@@ -24,7 +26,27 @@ Problem2.1
 Download cross-country data on life expectancy and GDP per capita. 
 “GDP per capita, PPP (constant)” and “Life expectancy at birth (total)”
 
-1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do. 
+1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do.
+
+```{r}
+# Joining the two tables by Country name column
+
+# Settin the ON clause as keys of the tables:
+setkey(GDP, "Country Name")
+setkey(Life,"Country Name")
+# performing the join, eliminating not matched rows from Right
+Data_raw <- Life[GDP, nomatch=0]
+
+# Dropping the unnecessary columns, keeing only country name, life expectancy and GDP per capita columns
+Data <- Data_raw[, -c(1,2,4,6:8), with =F]
+# renaming country name, life expectancy and GDP per capita columns for easier usage
+names(Data) <- c("country", "life", "GDP")
+
+# Dropping the rows where there is no country, and dropping countries where life expectancy and GPD is missing
+Data <- Data[!(Data$country=="")]
+Data <- Data[!(Data$life==".."), ]
+Data <- Data[!(Data$GDP==".."), ]
+```
 
 2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results. 
 
