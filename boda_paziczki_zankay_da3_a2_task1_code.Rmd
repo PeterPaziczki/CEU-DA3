@@ -1,23 +1,42 @@
 ---
-title: "DA3_2"
+title: "DA3 Assignment #2"
 author:
 - name: Peter_Paziczki
 - name: Imre_Boda
 - name: Balazs_Zankay
 date: '2017 november 18 '
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
   word_document: default
 ---
+
+<style>
+body {
+text-align: justify}
+</style>
 
 ```{r global_options, include=FALSE}
 rm(list=ls())
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+
 ```
 
 ```{r}
 library(data.table)
+library(ggplot2)
+library(haven)
+library(lspline)
+
+# install.packages("arm")
+library(arm)
+# install.packages("readr")
+library(readr)
+# install.packages("lmtest")
+library(lmtest)
+# install.packages("splines")
+library(splines)
+
 GDP <- fread('GDP_per_capita_2014-Data.csv', encoding = 'UTF-8')
 Life <- fread('Life_expectancy_at_birth_2014-Data.csv', encoding = 'UTF-8')
 ```
@@ -52,11 +71,113 @@ Data <- Data[!(Data$country=="")]
 Data <- Data[!(Data$life==".."), ]
 Data <- Data[!(Data$GDP==".."), ]
 n <- Data_raw[`Country Name` != "",.N] # number of countries in the original data set
+
+# Both life expectancy and GDP per capita are character variables, they need to be converted into numeric variables.
+Data <- Data[, lapply(.SD, as.numeric), by = country, .SDcols = c('life', 'GDP')]
+# There are other ways to do it though ...
+# Data$GDP <- as.numeric(as.character(Data$GDP))
+# Data$life <- as.numeric(as.character(Data$life))
+# Data <- Data[, GDP:=as.numeric(GDP)]
+
+# Cleaning data
+Data$GDP <- Data$GDP/1000
+# Taking the log of GDP per capita and sroting it in lnGDP column.
+Data$lnGDP <- log(Data$GDP)
+
+summary(Data$life)
+summary(Data$GDP)
+summary(Data$lnGDP)
+qplot(Data$life, geom="histogram", binwidth=5)
+qplot(Data$GDP, geom="histogram", binwidth=6)
+qplot(Data$lnGDP, geom="histogram", binwidth=0.5)
+
 ```
 
 We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` countries of the `r n` left to analyze.
 
-2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results. 
+2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
+
+We are estimating a non-parametric regression called lowess on life expectancy and GDP per capita. We took the logarythm of GDP per capita, we are interested in relative terms instead of absolute terms. Lowess non-parametric. Lowess produces a smooth curve, its advantage is that we can capture non-linear patterns. The disadvantage of lowess is thata it does not provide a formula that we could use to describe the relationship between life expectancy and GDP with an exact formual. What lowess does is that it provides an expected y value for every x values and for x values in-between resulting in a graph that we can use in qualitative analysis.
+
+In this particular case we have log GDP per capita on the x axis and life expectancy on the y axis.
+
+```{r}
+# Estimating a lowess non-parametric regression on the data set.
+ggplot(data = Data, aes(x=lnGDP, y=life)) +
+  geom_point(size=1.5, colour="orange", shape=4) +
+  geom_smooth(method="loess", colour="blue", se=F)+
+  labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")+
+  theme_bw()
+```
+
+We can see that the graph is has a positive slope in general. At the right end of the curve it gets a little flatter, but remains still positive.
+
+```{r}
+# Creating a scatterplot to have a quick look at the data we have:
+ggplot(Data, aes(GDP, life)) + geom_point()
+
+# Estimating a quadratic regression on GDP and life expectancy:
+Data$GDP_sq<-Data$GDP^2
+# Data$GDP_cub<-Data$GDP^3
+
+reg1 <- lm(life ~ GDP + GDP_sq, data=Data)
+summary(reg1)
+Data$pred_quad<-predict(reg1)
+
+ggplot(data = Data, aes(x=GDP, y=life)) +
+  geom_point(size=1.5, colour="orange",shape=4) +
+  labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")+
+  geom_line(data=Data,aes(x=GDP,y=pred_quad),colour="blue")
+
+# LEVEL-LOG REGRESSION
+ggplot(data = Data, aes(x=lnGDP, y=life)) +
+  geom_point(size=1.5, colour="orange") +
+  geom_smooth(method="lm", colour="navy", se=F) 
+reg2 <- lm(life ~ lnGDP, data=Data)
+summary(reg2)
+
+# HIGHEST INCOME COUNTRIES
+Data$e2 <- resid(reg2)
+highGDP <- subset(Data, GDP>60)
+
+# PIECEWISE LINEAR SPLINE IN LEVEL-LOG REGRESSION
+reg3 <- lm(life ~ lspline(lnGDP,4), data=Data)
+coeftest(reg3)
+Data$e3 <- resid(reg3)
+
+ggplot(data = Data, aes(x=GDP, y=life)) +
+  geom_point(size=1.5, colour="orange") +
+  geom_smooth(method="lm", formula=y~bs(x, degree=1, knots=c(4)), colour="navy", se=F) 
+
+# QUADRATIC IN LEVEL-LOG REGRESSION
+Data$lnGDP_sq <- Data$lnGDP^2
+reg4 <- lm(life ~ lnGDP + lnGDP_sq, data=Data)
+# fitting polynom with given degree without defining additional variables. USE 'raw=TRUE' not to use orthogonal polynomial
+# reg4 <- lm(life ~ poly(lnGDP,2, raw=TRUE), data=Data)
+summary(reg4)
+Data$e4 <- resid(reg4)
+ggplot(data = Data, aes(x=lnGDP, y=life)) +
+  geom_point(size=1.5, colour="orange") +
+  geom_smooth(method="lm", formula=y~poly(x,2), colour="navy", se=F) 
+
+# CUBIC IN LEVEL-LOG REGRESSION
+Data$lnGDP_cu <- Data$lnGDP^3
+reg5 <- lm(life ~ lnGDP + lnGDP_sq + lnGDP_cu, data=Data)
+# or
+# reg5 <- lm(life ~ poly(lnGDP,3,  raw=TRUE), data=Data)
+summary(reg5)
+Data$e5 <- resid(reg5)
+ggplot(data = Data, aes(x=lnGDP, y=life)) +
+  geom_point(size=1.5, colour="orange") +
+  geom_smooth(method="lm", formula=y~poly(x,3), colour="navy", se=F) 
+
+# HIGHEST INCOME COUNTRIES
+highGDP <- subset(Data, GDP>60)
+#highGDP$lngdppc_sq <- NULL
+#highGDP$lngdppc_cu <- NULL
+
+```
+```
 
 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
 
