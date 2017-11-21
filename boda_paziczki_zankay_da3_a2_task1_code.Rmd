@@ -1,10 +1,10 @@
 ---
-title: "DA3 Assignment #2"
+title: "Data Analysis 3 - Pattern Discovery and Regression Analysis 2017/2018 Fall"
 author:
-- name: Peter_Paziczki
-- name: Imre_Boda
-- name: Balazs_Zankay
-date: '2017 november 18 '
+- name: Peter Paziczki
+- name: Imre Boda
+- name: Balazs Zankay
+date: '2017 november 22'
 output:
   html_document: default
   pdf_document: default
@@ -41,9 +41,9 @@ GDP <- fread('GDP_per_capita_2014-Data.csv', encoding = 'UTF-8')
 Life <- fread('Life_expectancy_at_birth_2014-Data.csv', encoding = 'UTF-8')
 ```
 
-DA3 Assignment #2
+# DA3 Assignment #2
 
-Problem2.1
+## Problem2.1
 
 Download cross-country data on life expectancy and GDP per capita. 
 “GDP per capita, PPP (constant)” and “Life expectancy at birth (total)”
@@ -83,21 +83,35 @@ Data <- Data[, lapply(.SD, as.numeric), by = country, .SDcols = c('life', 'GDP')
 Data$GDP <- Data$GDP/1000
 # Taking the log of GDP per capita and sroting it in lnGDP column.
 Data$lnGDP <- log(Data$GDP)
-
-summary(Data$life)
-summary(Data$GDP)
-summary(Data$lnGDP)
-qplot(Data$life, geom="histogram", binwidth=5)
-qplot(Data$GDP, geom="histogram", binwidth=6)
-qplot(Data$lnGDP, geom="histogram", binwidth=0.5)
-
 ```
 
-We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` countries of the `r n` left to analyze.
+We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` countries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Finally we have divided GDP by 1000 and taken the logarithm of it.
+
+Please find summary statistics of life variable below:
+```{r}
+summary(Data$life)
+qplot(Data$life, geom="histogram", binwidth=5) + ggtitle(labs(title = "Histogram of life variable", x = "Life expectancy at birth [years]"))
+```
+
+Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Central African Republic.
+
+Please find summary statistics of GDP variable below:
+```{r}
+summary(Data$GDP)
+qplot(Data$GDP, geom="histogram", binwidth=6) + ggtitle(labs(title = "Histogram of GDP variable", x = "GDP per capita [1000 USD]"))
+```
+
+The GDP has a log normal like distribution with a long right tail, it is tipically a clear sign that we need to take the logarithm of the variable. GDP is the highest in Macao SAR, China, and the lowest in the Central African Republic. 
+
+Please find summary statistics of lnGDP variable below:
+```{r}
+summary(Data$lnGDP)
+qplot(Data$lnGDP, geom="histogram", binwidth=0.5) + ggtitle(labs(title = "Histogram of lnGDP variable", x = "logarithm of GDP per capita [1000 USD]"))
+```
 
 2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
 
-We are estimating a non-parametric regression called lowess on life expectancy and GDP per capita. We took the logarythm of GDP per capita, we are interested in relative terms instead of absolute terms. Lowess non-parametric. Lowess produces a smooth curve, its advantage is that we can capture non-linear patterns. The disadvantage of lowess is thata it does not provide a formula that we could use to describe the relationship between life expectancy and GDP with an exact formual. What lowess does is that it provides an expected y value for every x values and for x values in-between resulting in a graph that we can use in qualitative analysis.
+We are estimating a non-parametric regression called lowess on life expectancy and GDP per capita. We took the logarithm of GDP per capita, we are interested in relative terms instead of absolute terms. Lowess non-parametric. Lowess produces a smooth curve, its advantage is that we can capture non-linear patterns. The disadvantage of lowess is thata it does not provide a formula that we could use to describe the relationship between life expectancy and GDP with an exact formual. What lowess does is that it provides an expected y value for every x values and for x values in-between resulting in a graph that we can use in qualitative analysis.
 
 In this particular case we have log GDP per capita on the x axis and life expectancy on the y axis.
 
@@ -176,7 +190,6 @@ highGDP <- subset(Data, GDP>60)
 #highGDP$lngdppc_sq <- NULL
 #highGDP$lngdppc_cu <- NULL
 
-```
 ```
 
 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
