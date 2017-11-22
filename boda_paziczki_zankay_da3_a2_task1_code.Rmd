@@ -37,6 +37,7 @@ library(lmtest)
 # install.packages("splines")
 library(splines)
 
+#Reading input files
 GDP <- fread('GDP_per_capita_2014-Data.csv', encoding = 'UTF-8')
 Life <- fread('Life_expectancy_at_birth_2014-Data.csv', encoding = 'UTF-8')
 ```
@@ -58,18 +59,18 @@ We have downloaded both the above mentioned indicators for 2014, storing them in
 # Settin the ON clause as keys of the tables:
 setkey(GDP, `Country Name`)
 setkey(Life, `Country Name`)
-# performing the join, eliminating not matched rows from Right
+# Inner joining the two tables, DT syntax
 Data_raw <- Life[GDP, nomatch=0]
 
-# Dropping the unnecessary columns, keeing only country name, life expectancy and GDP per capita columns
-Data <- Data_raw[, -c(1,2,4,6:8), with =F]
+# Dropping the unnecessary columns, keeping only country name, life expectancy and GDP per capita columns
+Data <- Data_raw[, -c(1,2,4,6:8)]
 # renaming country name, life expectancy and GDP per capita columns for easier usage
 names(Data) <- c("country", "life", "GDP")
 
 # Dropping the obsevórvations where there is no country, and dropping countries where life expectancy and/or GPD are missing
-Data <- Data[!(Data$country=="")]
-Data <- Data[!(Data$life==".."), ]
-Data <- Data[!(Data$GDP==".."), ]
+Data <- Data[country!="",]
+Data <- Data[life!="..", ]
+Data <- Data[GDP!="..", ]
 n <- Data_raw[`Country Name` != "",.N] # number of countries in the original data set
 
 # Both life expectancy and GDP per capita are character variables, they need to be converted into numeric variables.
@@ -80,17 +81,17 @@ Data <- Data[, lapply(.SD, as.numeric), by = country, .SDcols = c('life', 'GDP')
 # Data <- Data[, GDP:=as.numeric(GDP)]
 
 # Cleaning data
-Data$GDP <- Data$GDP/1000
+Data [, "GDP"] <- Data [, .(GDP = GDP/1000)]
 # Taking the log of GDP per capita and sroting it in lnGDP column.
-Data$lnGDP <- log(Data$GDP)
+Data [, lnGDP := log(GDP)]
 ```
 
 We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` countries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Finally we have divided GDP by 1000 and taken the logarithm of it.
 
 Please find summary statistics of life variable below:
 ```{r}
-summary(Data$life)
-qplot(Data$life, geom="histogram", binwidth=5) + ggtitle(labs(title = "Histogram of life variable", x = "Life expectancy at birth [years]"))
+summary(Data[,life])
+ggplot (Data, aes(life)) + geom_histogram(binwidth = 1) + ggtitle(labs(title = "Histogram of life variable", x = "Life expectancy at birth [years]"))
 ```
 
 Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Central African Republic.
