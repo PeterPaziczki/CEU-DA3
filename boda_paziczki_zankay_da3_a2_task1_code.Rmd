@@ -25,21 +25,23 @@ knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```{r}
 library(data.table)
 library(ggplot2)
-library(haven)
+#library(haven)
 library(lspline)
 
 # install.packages("arm")
-library(arm)
+#library(arm)
 # install.packages("readr")
-library(readr)
+#library(readr)
 # install.packages("lmtest")
-library(lmtest)
+#library(lmtest)
 # install.packages("splines")
-library(splines)
+#library(splines)
 
 #Reading input files
 GDP <- fread('GDP_per_capita_2014-Data.csv', encoding = 'UTF-8')
 Life <- fread('Life_expectancy_at_birth_2014-Data.csv', encoding = 'UTF-8')
+#Reading file to compare entries against country list
+CountryList <- read.csv('https://www.searchify.ca/wp-content/uploads/2016/09/country-keyword-list.csv',fileEncoding="UTF-16LE")
 ```
 
 # DA3 Assignment #2
@@ -80,13 +82,28 @@ Data <- Data[, lapply(.SD, as.numeric), by = country, .SDcols = c('life', 'GDP')
 # Data$life <- as.numeric(as.character(Data$life))
 # Data <- Data[, GDP:=as.numeric(GDP)]
 
-# Cleaning data
+# Shaping data
 Data [, "GDP"] <- Data [, .(GDP = GDP/1000)]
 # Taking the log of GDP per capita and sroting it in lnGDP column.
 Data [, lnGDP := log(GDP)]
 ```
 
 We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` countries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Finally we have divided GDP by 1000 and taken the logarithm of it.
+
+#### Data Cleaning
+We have aggregated lines in the data, that we have to remove as we only care about countries in the analysis.
+We do this cleaning in two steps: first we check entries where the "country" is not inlcuded in the list of downloaded countries.
+Then we manually check all of these, and collect those that are really not countries. (In the previous step some get classified as "non country" due to different writing in Data Bank and in the downloaded country list). Once we have this collection of real non-countries, we remove all from the Data.
+```{r}
+SuspectedGarbage <- Data[!country %in% CountryList[,1]]            
+Garbage <- SuspectedGarbage [ -c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),]
+#let's check that we put non-countries to garbage and we kept only countries
+Garbage 
+SuspectedGarbage [ c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),]
+#Removing all non country entries from the database and only keep countries
+Data <- Data[!country %in% Garbage [,country]]
+```
+
 
 Please find summary statistics of life variable below:
 ```{r}
@@ -100,16 +117,16 @@ Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Ce
 
 Please find summary statistics of GDP variable below:
 ```{r}
-summary(Data$GDP)
-qplot(Data$GDP, geom="histogram", binwidth=6) + ggtitle(labs(title = "Histogram of GDP variable", x = "GDP per capita [1000 USD]"))
+summary(Data[,GDP])
+ggplot (Data, aes(GDP)) + geom_histogram ( binwidth=6) + ggtitle(labs(title = "Histogram of GDP variable", x = "GDP per capita [1000 USD]"))
 ```
 
 The GDP has a log normal like distribution with a long right tail, it is tipically a clear sign that we need to take the logarithm of the variable. GDP is the highest in Macao SAR, China, and the lowest in the Central African Republic. 
 
 Please find summary statistics of lnGDP variable below:
 ```{r}
-summary(Data$lnGDP)
-qplot(Data$lnGDP, geom="histogram", binwidth=0.5) + ggtitle(labs(title = "Histogram of lnGDP variable", x = "logarithm of GDP per capita [1000 USD]"))
+summary(Data[,lnGDP])
+ggplot(Data, aes(lnGDP)) + geom_histogram (binwidth=0.5) + ggtitle(labs(title = "Histogram of lnGDP variable", x = "logarithm of GDP per capita [1000 USD]"))
 ```
 
 2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
@@ -134,62 +151,63 @@ We can see that the graph is has a positive slope in general. At the right end o
 ggplot(Data, aes(GDP, life)) + geom_point()
 
 # Estimating a quadratic regression on GDP and life expectancy:
-Data$GDP_sq<-Data$GDP^2
+Data[,GDP_sq:=GDP^2]
 # Data$GDP_cub<-Data$GDP^3
 
 reg1 <- lm(life ~ GDP + GDP_sq, data=Data)
 summary(reg1)
 Data$pred_quad<-predict(reg1)
 
-ggplot(data = Data, aes(x=GDP, y=life)) +
-  geom_point(size=1.5, colour="orange",shape=4) +
+ggplot(Data, aes(x=GDP, y=life)) +
+  geom_point(size=1.5) +
   labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")+
   geom_line(data=Data,aes(x=GDP,y=pred_quad),colour="blue")
 
 # LEVEL-LOG REGRESSION
 ggplot(data = Data, aes(x=lnGDP, y=life)) +
-  geom_point(size=1.5, colour="orange") +
+  geom_point(size=1.5) +
   geom_smooth(method="lm", colour="navy", se=F) 
 reg2 <- lm(life ~ lnGDP, data=Data)
 summary(reg2)
 
 # HIGHEST INCOME COUNTRIES
-Data$e2 <- resid(reg2)
-highGDP <- subset(Data, GDP>60)
+#bd Data$e2 <- resid(reg2)
+highGDP <- Data[GDP>60,]
 
 # PIECEWISE LINEAR SPLINE IN LEVEL-LOG REGRESSION
-reg3 <- lm(life ~ lspline(lnGDP,4), data=Data)
-coeftest(reg3)
-Data$e3 <- resid(reg3)
+knots <- c(4)
+reg3 <- lm(life ~ lspline(lnGDP,knots), data=Data)
+#coeftest(reg3)
+#Data$e3 <- resid(reg3)
 
 ggplot(data = Data, aes(x=GDP, y=life)) +
-  geom_point(size=1.5, colour="orange") +
-  geom_smooth(method="lm", formula=y~bs(x, degree=1, knots=c(4)), colour="navy", se=F) 
+  geom_point(size=1.5) +
+  geom_smooth(method="lm", formula=y~bs(x, degree=1, knots), colour="navy", se=F) 
 
 # QUADRATIC IN LEVEL-LOG REGRESSION
-Data$lnGDP_sq <- Data$lnGDP^2
+Data[,lnGDP_sq := lnGDP^2]
 reg4 <- lm(life ~ lnGDP + lnGDP_sq, data=Data)
 # fitting polynom with given degree without defining additional variables. USE 'raw=TRUE' not to use orthogonal polynomial
 # reg4 <- lm(life ~ poly(lnGDP,2, raw=TRUE), data=Data)
 summary(reg4)
-Data$e4 <- resid(reg4)
+#Data$e4 <- resid(reg4)
 ggplot(data = Data, aes(x=lnGDP, y=life)) +
-  geom_point(size=1.5, colour="orange") +
+  geom_point(size=1.5) +
   geom_smooth(method="lm", formula=y~poly(x,2), colour="navy", se=F) 
 
 # CUBIC IN LEVEL-LOG REGRESSION
-Data$lnGDP_cu <- Data$lnGDP^3
+Data[,lnGDP_cu := lnGDP^3]
 reg5 <- lm(life ~ lnGDP + lnGDP_sq + lnGDP_cu, data=Data)
 # or
 # reg5 <- lm(life ~ poly(lnGDP,3,  raw=TRUE), data=Data)
 summary(reg5)
-Data$e5 <- resid(reg5)
+#Data$e5 <- resid(reg5)
 ggplot(data = Data, aes(x=lnGDP, y=life)) +
-  geom_point(size=1.5, colour="orange") +
+  geom_point(size=1.5) +
   geom_smooth(method="lm", formula=y~poly(x,3), colour="navy", se=F) 
 
 # HIGHEST INCOME COUNTRIES
-highGDP <- subset(Data, GDP>60)
+highGDP <- Data[GDP>60,]
 #highGDP$lngdppc_sq <- NULL
 #highGDP$lngdppc_cu <- NULL
 
