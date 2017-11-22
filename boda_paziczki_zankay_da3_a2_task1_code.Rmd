@@ -92,6 +92,8 @@ Please find summary statistics of life variable below:
 ```{r}
 summary(Data[,life])
 ggplot (Data, aes(life)) + geom_histogram(binwidth = 1) + ggtitle(labs(title = "Histogram of life variable", x = "Life expectancy at birth [years]"))
+Data [life == Data [,min(life)],]
+Data [life == Data [,max(life)],]
 ```
 
 Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Central African Republic.
