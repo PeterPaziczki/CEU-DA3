@@ -18,11 +18,11 @@ text-align: justify}
 
 ```{r global_options, include=FALSE}
 rm(list=ls())
-knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
 
 ```
 
-```{r}
+```{r load}
 library(data.table)
 library(ggplot2)
 #library(haven)
@@ -53,9 +53,9 @@ Download cross-country data on life expectancy and GDP per capita.
 
 We have downloaded both the above mentioned indicators for 2014, storing them in two separate csv files, GDP_per_capita_2014-Data.csv and Life_expectancy_at_birth_2014-Data.csv.
 
-1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do.
+### Q1. 1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do.
 
-```{r}
+```{r Q1_basic}
 # Joining the two tables by Country name column.
 
 # Settin the ON clause as keys of the tables:
@@ -88,25 +88,26 @@ Data [, "GDP"] <- Data [, .(GDP = GDP/1000)]
 Data [, lnGDP := log(GDP)]
 ```
 
-We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` countries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Finally we have divided GDP by 1000 and taken the logarithm of it.
+We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` entries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Finally we have divided GDP by 1000 and took the log of it.
+We also downloaded a csv file containing the list of countries in the world for our next step, which is Data Cleaning.
 
 #### Data Cleaning
 We have aggregated lines in the data, that we have to remove as we only care about countries in the analysis.
 We do this cleaning in two steps: first we check entries where the "country" is not inlcuded in the list of downloaded countries.
-Then we manually check all of these, and collect those that are really not countries. (In the previous step some get classified as "non country" due to different writing in Data Bank and in the downloaded country list). Once we have this collection of real non-countries, we remove all from the Data.
-```{r}
+Then we manually check all of them, and collect those that are really not countries. (In the previous step some get classified as "non country" due to different writing in Data Bank and in the downloaded country list csv file). Once we have this collection of real non-countries, we remove all from the Data.
+```{r Q1_Cleaning}
 SuspectedGarbage <- Data[!country %in% CountryList[,1]]            
 Garbage <- SuspectedGarbage [ -c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),]
 #let's check that we put non-countries to garbage and we kept only countries
-Garbage 
-SuspectedGarbage [ c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),]
+Garbage [, country]
+SuspectedGarbage [ c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),country]
 #Removing all non country entries from the database and only keep countries
 Data <- Data[!country %in% Garbage [,country]]
 ```
 
 
 Please find summary statistics of life variable below:
-```{r}
+```{r Q1_LifeSummary}
 summary(Data[,life])
 ggplot (Data, aes(life)) + geom_histogram(binwidth = 1) + ggtitle(labs(title = "Histogram of life variable", x = "Life expectancy at birth [years]"))
 Data [life == Data [,min(life)],]
@@ -116,53 +117,81 @@ Data [life == Data [,max(life)],]
 Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Central African Republic.
 
 Please find summary statistics of GDP variable below:
-```{r}
+```{r Q1_GDPSummary}
 summary(Data[,GDP])
 ggplot (Data, aes(GDP)) + geom_histogram ( binwidth=6) + ggtitle(labs(title = "Histogram of GDP variable", x = "GDP per capita [1000 USD]"))
+Data [GDP == Data [,min(GDP)],]
+Data [GDP == Data [,max(GDP)],]
 ```
 
-The GDP has a log normal like distribution with a long right tail, it is tipically a clear sign that we need to take the logarithm of the variable. GDP is the highest in Macao SAR, China, and the lowest in the Central African Republic. 
+GDP follows a log normal like distribution with a long right tail, it is tipically a clear sign that we are better to take the logarithm of the variable. GDP is the highest in Macao SAR, China, and the lowest in the Central African Republic. 
 
 Please find summary statistics of lnGDP variable below:
-```{r}
+```{r Q1_lnGDP}
 summary(Data[,lnGDP])
 ggplot(Data, aes(lnGDP)) + geom_histogram (binwidth=0.5) + ggtitle(labs(title = "Histogram of lnGDP variable", x = "logarithm of GDP per capita [1000 USD]"))
 ```
 
-2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
+### Q2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
 
-We are estimating a non-parametric regression called lowess on life expectancy and GDP per capita. We took the logarithm of GDP per capita, we are interested in relative terms instead of absolute terms. Lowess non-parametric. Lowess produces a smooth curve, its advantage is that we can capture non-linear patterns. The disadvantage of lowess is thata it does not provide a formula that we could use to describe the relationship between life expectancy and GDP with an exact formual. What lowess does is that it provides an expected y value for every x values and for x values in-between resulting in a graph that we can use in qualitative analysis.
+We took the log of GDP per capita, as we are interested in relative % changes instead of absolute terms. Lowess produces a smooth curve, that allows us to capture non-linear patterns. (The con of lowess is thata it does not provide a formula to describe the relationship between life expectancy and GDP.) What lowess does is that it provides an expected y value for every x values and for x values in-between resulting in a graph that we can use in qualitative analysis.
 
 In this particular case we have log GDP per capita on the x axis and life expectancy on the y axis.
 
-```{r}
+```{r Q2_lowessGraph}
 # Estimating a lowess non-parametric regression on the data set.
 ggplot(data = Data, aes(x=lnGDP, y=life)) +
-  geom_point(size=1.5, colour="orange", shape=4) +
+  geom_point(size=1.5) +
   geom_smooth(method="loess", colour="blue", se=F)+
   labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")+
   theme_bw()
 ```
 
-We can see that the graph is has a positive slope in general. At the right end of the curve it gets a little flatter, but remains still positive.
+We can see that the graph has a positive slope in general. At the right end of the curve it gets a little flatter, but remains still positive. So we can assumte that there is some sort of positive correlation between these two variables.
+```{r Q2_loessError}
+#Loess error
+loess (life ~ lnGDP, Data)
+```
 
-```{r}
+
+In the following sections we go deeper in understanding our data.
+
+First, let's have a scatterplot.
+```{r Q2_scatterplots}
 # Creating a scatterplot to have a quick look at the data we have:
-ggplot(Data, aes(GDP, life)) + geom_point()
+ggplot(Data, aes(x = GDP, y = life)) + geom_point()
+ggplot(Data, aes(x = lnGDP, y = life)) + geom_point ()
+```
 
+The above graphs show that we are probably on the right track when trying to find relationship between log GDP and Life Expectancy, rather than GDP and Life Expectancy.
+
+#### Level - Log Linear Regression
+``` {r_Q2_LinearRegression}
+reg_lin <- lm(life ~ lnGDP, data=Data)
+ggplot (Data, aes (x=lnGDP, y = life )) + geom_point (size = 1.5) + 
+ggtitle("Q2. Linear Regression") + labs(x = "GDP per capita [1000 USD] (log)", y = "Life Expectancy [year]") + 
+geom_smooth (method = "lm")
+summary (reg_lin)
+```
+We seem to have rather small residual errors and pretty good R-square, confirming the relationship between lnGDP and Life Expectancy.
+The coefficients: at 0 lnGDP the Expected Life is ~58 years, and at every percent in GDP change results in ~5.5/100 year change in average life expectancy.
+
+#### Level - Level Quadratic regression
+``` {r Q2_QuadraticRegression}
 # Estimating a quadratic regression on GDP and life expectancy:
-Data[,GDP_sq:=GDP^2]
-# Data$GDP_cub<-Data$GDP^3
+Data[, GDP_sq := GDP^2]
+reg_quad <- lm(life ~ GDP + GDP_sq, data=Data)
+summary(reg_quad)
 
-reg1 <- lm(life ~ GDP + GDP_sq, data=Data)
-summary(reg1)
-Data$pred_quad<-predict(reg1)
+ggplot(Data, aes(x=GDP, y=life)) +  geom_point(size=1.5) + 
+  ggtitle ("Q2. Quadratic regression") +  
+  labs(x="GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=GDP,y=predict(reg_quad)),colour="blue")
+```
 
-ggplot(Data, aes(x=GDP, y=life)) +
-  geom_point(size=1.5) +
-  labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")+
-  geom_line(data=Data,aes(x=GDP,y=pred_quad),colour="blue")
+R-square is lower and residual error is higher than before, indicating that it might not be as good model as the previous one is. Frankly, probably there is nothing to justify that life expectancy would peek at `r round (0.58 / 2 / 0.0039)` kUSD GDP per capita, and very rich countries would suffer. The reasonably small error rate to this model is likely attributable to the fact that we have very few very rich countries (hence, small number of observations on this end.)
 
+``` {r Q2_Log-Log}
 # LEVEL-LOG REGRESSION
 ggplot(data = Data, aes(x=lnGDP, y=life)) +
   geom_point(size=1.5) +
