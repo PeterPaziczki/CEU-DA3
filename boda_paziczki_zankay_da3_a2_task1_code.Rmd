@@ -19,7 +19,6 @@ text-align: justify}
 ```{r global_options, include=FALSE}
 rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
-
 ```
 
 ```{r load}
@@ -36,6 +35,9 @@ library(lspline)
 #library(lmtest)
 # install.packages("splines")
 #library(splines)
+
+#presentation parameters
+theme_update(plot.title = element_text(hjust = 0.5, size = 12))
 
 #Reading input files
 GDP <- fread('GDP_per_capita_2014-Data.csv', encoding = 'UTF-8')
@@ -77,15 +79,11 @@ n <- Data_raw[`Country Name` != "",.N] # number of countries in the original dat
 
 # Both life expectancy and GDP per capita are character variables, they need to be converted into numeric variables.
 Data <- Data[, lapply(.SD, as.numeric), by = country, .SDcols = c('life', 'GDP')]
-# There are other ways to do it though ...
-# Data$GDP <- as.numeric(as.character(Data$GDP))
-# Data$life <- as.numeric(as.character(Data$life))
-# Data <- Data[, GDP:=as.numeric(GDP)]
 
 # Shaping data
 Data [, "GDP"] <- Data [, .(GDP = GDP/1000)]
-# Taking the log of GDP per capita and sroting it in lnGDP column.
-Data [, lnGDP := log(GDP)]
+# Taking the log of GDP per capita and sroting it in logGDP column.
+Data [, logGDP := log(GDP)]
 ```
 
 We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` entries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Finally we have divided GDP by 1000 and took the log of it.
@@ -109,7 +107,7 @@ Data <- Data[!country %in% Garbage [,country]]
 Please find summary statistics of life variable below:
 ```{r Q1_LifeSummary}
 summary(Data[,life])
-ggplot (Data, aes(life)) + geom_histogram(binwidth = 1) + ggtitle(labs(title = "Histogram of life variable", x = "Life expectancy at birth [years]"))
+ggplot (Data, aes(life)) + geom_histogram(binwidth = 1) + ggtitle(labs(title = "Q1. Histogram of life variable", x = "Life expectancy at birth [years]"))
 Data [life == Data [,min(life)],]
 Data [life == Data [,max(life)],]
 ```
@@ -119,17 +117,17 @@ Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Ce
 Please find summary statistics of GDP variable below:
 ```{r Q1_GDPSummary}
 summary(Data[,GDP])
-ggplot (Data, aes(GDP)) + geom_histogram ( binwidth=6) + ggtitle(labs(title = "Histogram of GDP variable", x = "GDP per capita [1000 USD]"))
+ggplot (Data, aes(GDP)) + geom_histogram ( binwidth=6) + ggtitle(labs(title = "Q1. Histogram of GDP variable", x = "GDP per capita [1000 USD]"))
 Data [GDP == Data [,min(GDP)],]
 Data [GDP == Data [,max(GDP)],]
 ```
 
 GDP follows a log normal like distribution with a long right tail, it is tipically a clear sign that we are better to take the logarithm of the variable. GDP is the highest in Macao SAR, China, and the lowest in the Central African Republic. 
 
-Please find summary statistics of lnGDP variable below:
-```{r Q1_lnGDP}
-summary(Data[,lnGDP])
-ggplot(Data, aes(lnGDP)) + geom_histogram (binwidth=0.5) + ggtitle(labs(title = "Histogram of lnGDP variable", x = "logarithm of GDP per capita [1000 USD]"))
+Please find summary statistics of logGDP variable below:
+```{r Q1_logGDP}
+summary(Data[,logGDP])
+ggplot(Data, aes(logGDP)) + geom_histogram (binwidth=0.5) + ggtitle(labs(title = "Q1. Histogram of logGDP variable", x = "Log GDP per capita [1000 USD]"))
 ```
 
 ### Q2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
@@ -140,18 +138,15 @@ In this particular case we have log GDP per capita on the x axis and life expect
 
 ```{r Q2_lowessGraph}
 # Estimating a lowess non-parametric regression on the data set.
-ggplot(data = Data, aes(x=lnGDP, y=life)) +
+reg_loess <- loess (life ~ logGDP, Data)
+summary (reg_loess)
+ggplot(data = Data, aes(x=logGDP, y=life)) +
   geom_point(size=1.5) +
-  geom_smooth(method="loess", colour="blue", se=F)+
-  labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")+
-  theme_bw()
+  ggtitle ("Q2. Lowess regression") + labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=logGDP,y=predict(reg_loess)),colour="blue",size = 1)
 ```
 
 We can see that the graph has a positive slope in general. At the right end of the curve it gets a little flatter, but remains still positive. So we can assumte that there is some sort of positive correlation between these two variables.
-```{r Q2_loessError}
-#Loess error
-loess (life ~ lnGDP, Data)
-```
 
 
 In the following sections we go deeper in understanding our data.
@@ -159,22 +154,58 @@ In the following sections we go deeper in understanding our data.
 First, let's have a scatterplot.
 ```{r Q2_scatterplots}
 # Creating a scatterplot to have a quick look at the data we have:
-ggplot(Data, aes(x = GDP, y = life)) + geom_point()
-ggplot(Data, aes(x = lnGDP, y = life)) + geom_point ()
+ggplot(Data, aes(x = GDP, y = life)) + geom_point() +
+  ggtitle ("Q2. GDP - Life expectancy") + labs(x="GDP per capita, PPP [USD]",y="Life expectancy at birth [years]") 
+ggplot(Data, aes(x = logGDP, y = life)) + geom_point () +
+  ggtitle ("Q2. Log GDP - Life expectancy") + labs(x="Log GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")
 ```
 
 The above graphs show that we are probably on the right track when trying to find relationship between log GDP and Life Expectancy, rather than GDP and Life Expectancy.
 
+
 #### Level - Log Linear Regression
 ``` {r_Q2_LinearRegression}
-reg_lin <- lm(life ~ lnGDP, data=Data)
-ggplot (Data, aes (x=lnGDP, y = life )) + geom_point (size = 1.5) + 
-ggtitle("Q2. Linear Regression") + labs(x = "GDP per capita [1000 USD] (log)", y = "Life Expectancy [year]") + 
-geom_smooth (method = "lm")
-summary (reg_lin)
+reg_levlog <- lm(life ~ logGDP, data=Data)
+summary (reg_levlog)
+#ggplot (Data, aes (x=logGDP, y = life )) + geom_point (size = 1.5) + 
+#ggtitle("Q2. Linear Regression") + labs(x = "Log GDP per capita [1000 USD]", y = "Life Expectancy [year]") + 
+#geom_smooth (method = "lm")
+ggplot (Data, aes (x=logGDP, y = life )) + geom_point (size = 1.5) + 
+ggtitle("Q2. Linear Regression") + labs(x = "Log GDP per capita [1000 USD]", y = "Life Expectancy [year]") + 
+geom_line(data=Data,aes(x=logGDP,y=predict(reg_levlog)),colour="blue",size = 1)
+
 ```
-We seem to have rather small residual errors and pretty good R-square, confirming the relationship between lnGDP and Life Expectancy.
-The coefficients: at 0 lnGDP the Expected Life is ~58 years, and at every percent in GDP change results in ~5.5/100 year change in average life expectancy.
+We seem to have rather small residual errors and pretty good R-square, confirming the relationship between logGDP and Life Expectancy.
+The coefficients: at 0 logGDP the Expected Life is ~58 years, and at every percent in GDP change results in ~5.5/100 year change in average life expectancy.
+
+#### Log - Log regression
+``` {r Q2_Log-Log}
+# LOG-LOG REGRESSION
+reg_loglog <- lm(log(life) ~ logGDP, data=Data)
+summary(reg_loglog)
+ggplot(data = Data, aes(x=logGDP, y=log(life))) +  geom_point(size=1.5) +
+  ggtitle ("Q2. Log-Log regression") +  
+  labs(x="Log - GDP per capita, PPP [USD]", y="Log - Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=logGDP,y=predict(reg_loglog)),colour="blue",size = 1)
+```  
+
+!!! ÉRTÉKELÉST IDE
+
+
+#### Lev - Lev regression
+
+Though the scatterplots above suggested that the level - level linear correlation probaly is not the best model, just for the sake of completeness let's see a level-level linear regression model.
+``` {r Q2_Lev-Lev}
+# LOG-LOG REGRESSION
+reg_levlev <- lm(life ~ GDP, data=Data)
+summary(reg_levlev)
+ggplot(data = Data, aes(x=GDP, y=life)) +  geom_point(size=1.5) +
+  ggtitle ("Q2. Level - Level linear regression") +  
+  labs(x="GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=GDP,y=predict(reg_levlev)),colour="blue",size = 1)
+```  
+
+Both R-square and the plot confirms our assumption that there are much better models that the simple level - level linear regression.
 
 #### Level - Level Quadratic regression
 ``` {r Q2_QuadraticRegression}
@@ -186,61 +217,64 @@ summary(reg_quad)
 ggplot(Data, aes(x=GDP, y=life)) +  geom_point(size=1.5) + 
   ggtitle ("Q2. Quadratic regression") +  
   labs(x="GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
-  geom_line(data=Data,aes(x=GDP,y=predict(reg_quad)),colour="blue")
+  geom_line(data=Data,aes(x=GDP,y=predict(reg_quad)),colour="blue",size = 1)
 ```
 
 R-square is lower and residual error is higher than before, indicating that it might not be as good model as the previous one is. Frankly, probably there is nothing to justify that life expectancy would peek at `r round (0.58 / 2 / 0.0039)` kUSD GDP per capita, and very rich countries would suffer. The reasonably small error rate to this model is likely attributable to the fact that we have very few very rich countries (hence, small number of observations on this end.)
 
-``` {r Q2_Log-Log}
-# LEVEL-LOG REGRESSION
-ggplot(data = Data, aes(x=lnGDP, y=life)) +
-  geom_point(size=1.5) +
-  geom_smooth(method="lm", colour="navy", se=F) 
-reg2 <- lm(life ~ lnGDP, data=Data)
-summary(reg2)
-
-# HIGHEST INCOME COUNTRIES
-#bd Data$e2 <- resid(reg2)
-highGDP <- Data[GDP>60,]
-
-# PIECEWISE LINEAR SPLINE IN LEVEL-LOG REGRESSION
-knots <- c(4)
-reg3 <- lm(life ~ lspline(lnGDP,knots), data=Data)
-#coeftest(reg3)
-#Data$e3 <- resid(reg3)
+#### Level - Level Cubic Regression
+``` {r Q2_CubicRegression}
+Data[,GDP_cu := logGDP^3]
+reg_cub <- lm(life ~ GDP + GDP_sq + GDP_cu, data=Data)
+summary(reg_cub)
 
 ggplot(data = Data, aes(x=GDP, y=life)) +
   geom_point(size=1.5) +
-  geom_smooth(method="lm", formula=y~bs(x, degree=1, knots), colour="navy", se=F) 
-
-# QUADRATIC IN LEVEL-LOG REGRESSION
-Data[,lnGDP_sq := lnGDP^2]
-reg4 <- lm(life ~ lnGDP + lnGDP_sq, data=Data)
-# fitting polynom with given degree without defining additional variables. USE 'raw=TRUE' not to use orthogonal polynomial
-# reg4 <- lm(life ~ poly(lnGDP,2, raw=TRUE), data=Data)
-summary(reg4)
-#Data$e4 <- resid(reg4)
-ggplot(data = Data, aes(x=lnGDP, y=life)) +
-  geom_point(size=1.5) +
-  geom_smooth(method="lm", formula=y~poly(x,2), colour="navy", se=F) 
-
-# CUBIC IN LEVEL-LOG REGRESSION
-Data[,lnGDP_cu := lnGDP^3]
-reg5 <- lm(life ~ lnGDP + lnGDP_sq + lnGDP_cu, data=Data)
-# or
-# reg5 <- lm(life ~ poly(lnGDP,3,  raw=TRUE), data=Data)
-summary(reg5)
-#Data$e5 <- resid(reg5)
-ggplot(data = Data, aes(x=lnGDP, y=life)) +
-  geom_point(size=1.5) +
-  geom_smooth(method="lm", formula=y~poly(x,3), colour="navy", se=F) 
-
-# HIGHEST INCOME COUNTRIES
-highGDP <- Data[GDP>60,]
-#highGDP$lngdppc_sq <- NULL
-#highGDP$lngdppc_cu <- NULL
-
+  ggtitle ("Q2. Cubic regression") +  
+  labs(x="GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=GDP,y=predict(reg_cub)),colour="blue",size = 1)
 ```
+
+#### Piecewise Linear Spline
+
+In the lowess diagram we see that something is changing at about x = 4. We select the knots accordingly and build the PLS model accordingly.
+``` {r Q2_PLS}
+
+# PIECEWISE LINEAR SPLINE IN LEVEL-LOG REGRESSION
+knots <- c(4)
+reg_PLS <- lm(life ~ lspline(logGDP,knots), data=Data)
+summary (reg_PLS)
+ggplot(data = Data, aes(x=logGDP, y=life)) +
+  geom_point(size=1.5) +
+  ggtitle ("Q2. Piecewise Linear Spline") +
+  labs(x="Log GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=logGDP,y=predict(reg_PLS)),colour="blue",size = 1) +
+  geom_vline(xintercept =knots,colour="red") 
+```
+
+#### Choosing the best model and evaluating it
+!!! BLA-BLA-BLA
+```{r Model selection}
+
+RSq <- data.table (c("Level - Log  :  ",
+                     "Log - Log    :  ", 
+                     "Level - Level:  ", 
+                     "Quadratic    :  ", 
+                     "Cubic        :  ", 
+                     "PLS (spline) :  "), 
+                   c(summary(reg_levlog)$r.squared,
+                     summary(reg_loglog)$r.squared,
+                     summary(reg_levlev)$r.squared,
+                     summary(reg_quad)$r.squared,
+                     summary(reg_cub)$r.squared,
+                     summary(reg_PLS)$r.squared
+                     ))
+RSq
+```
+!!! Azt javaslom, hogy legyen a level-log. Nagyon jó az R-square-je, és magyarázható is.
+!!! Meg kell indokolni hogy ezért választottuk ezt.
+!!! Koefficiensek magyarázatát be kell másolni fentről.
+
 
 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
 
