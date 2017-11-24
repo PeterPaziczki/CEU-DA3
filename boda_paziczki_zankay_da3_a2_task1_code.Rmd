@@ -50,12 +50,15 @@ CountryList <- read.csv('https://www.searchify.ca/wp-content/uploads/2016/09/cou
 
 ## Problem2.1
 
-Download cross-country data on life expectancy and GDP per capita. 
-“GDP per capita, PPP (constant)” and “Life expectancy at birth (total)”
+
+### <span style="color:blue">Download cross-country data on life expectancy and GDP per capita. 
+- “GDP per capita, PPP (constant)” and “Life expectancy at birth (total)”
+</span>
 
 We have downloaded both the above mentioned indicators for 2014, storing them in two separate csv files, GDP_per_capita_2014-Data.csv and Life_expectancy_at_birth_2014-Data.csv.
 
-### Q1. 1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do.
+### <span style="color:blue"> Q1. 1. Delete unnecessary columns and save a csv file with three columns only: country name, life expectancy and GDP per capita. Keep countries with non-missing values for life expectancy and GDP per capita. Document what you do.
+</span>
 
 ```{r Q1_basic}
 # Joining the two tables by Country name column.
@@ -130,7 +133,9 @@ summary(Data[,logGDP])
 ggplot(Data, aes(logGDP)) + geom_histogram (binwidth=0.5) + ggtitle(labs(title = "Q1. Histogram of logGDP variable", x = "Log GDP per capita [1000 USD]"))
 ```
 
-### Q2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
+
+### <span style="color:blue"> Q2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
+</span>
 
 We took the log of GDP per capita, as we are interested in relative % changes instead of absolute terms. Lowess produces a smooth curve, that allows us to capture non-linear patterns. (The con of lowess is thata it does not provide a formula to describe the relationship between life expectancy and GDP.) What lowess does is that it provides an expected y value for every x values and for x values in-between resulting in a graph that we can use in qualitative analysis.
 
@@ -311,7 +316,9 @@ Coefficients and Confidence interval at 95% have been calculated with in built R
 
 !!! BLA-BLA: worth noting that Alpha and Beta estimates are the same that we got earlier, and examined when printed the summary of reg_levlog model.
 
-### 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
+
+### <span style="color:blue"> 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
+</span>
 
 In order to do it, first we need to enhance our data with population. For that we downloaded 2014 population data form the same "World Development Indicators" website.
 
@@ -354,12 +361,14 @@ ggplot (Data2, aes (x = logGDP, y = life, size = Population)) +
 !Bla-Bla. Ide kell majd az, hogy nagyon hasonlít az unweighted-re, mert a nagy population országok ott vannak (az eredeti) regressziós egyenes közelében
 
 
-Problem 2.2
+##<span style="color:blue"> Problem 2.2
 
 Download hotels_all_nov21.csv. Pick a city. Consider hotels and hostels. Consider all with at least 2 stars. You have 6 tasks (1p each). 
 The goal of the exercise is to use information you have in your data to find a shortlist of five hotels and/or hostels that are good candidates for a good deal. You have to estimate a regression of prices (or log prices) on the other variables of your choice. You have to document your analysis and print the shortlist. 
+</span>
 
-1. Pick a set of variables. Describe all variables used in the analysis.
+### <span style="color:blue"> 2.2.1. Pick a set of variables. Describe all variables used in the analysis.
+</span>
 
 2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
 
