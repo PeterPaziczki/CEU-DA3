@@ -280,12 +280,18 @@ RSq
 !!! Alább azt tételezem fel, hogy a level-log-t választottuk az előző paragrafusban
 !!! Ide is kell BLA-BLA
 ``` {r Q2_Coefficients}
-##x = logGDP, y = life
+### x = logGDP, y = life
+
+## easy way:
+coef (reg_levlog)
+confint (reg_levlog)
+
+## manual
 Beta_estimate <- cov (Data [,logGDP], Data[,life]) / var (Data [, logGDP]) # cov (x,y) / var (x)
 Alpha_estimate <- Data [, mean(life)] - Beta_estimate * Data [,mean (logGDP)]  # mean (y) - beta * mean (x)
 Beta_estimate
 Alpha_estimate
-## sd of Residual Error calculation in 3 ways
+# sd of Residual Error calculation in 3 ways
 sdResidErr1 <- sd (Data [, life - (Alpha_estimate + Beta_estimate * logGDP)]) #R built in sd function
 sdResidErr2 <- Data [, (sum((life - (Alpha_estimate + Beta_estimate * logGDP))^2) / (.N-1))^0.5] #formula, n-1
 sdResidErr3 <- Data [, (sum((life - (Alpha_estimate + Beta_estimate * logGDP))^2) / (.N-2))^0.5] #formula, n-2
@@ -296,14 +302,57 @@ sdResidErr3
 # interpretation: sdResidErr1 and sdResidErr2 are the same, but different from tha value that we saw in summary (reg_levlog) above. The reason is that summary (reg_levlog) calculated with df = N-2, as it was also mentioned in that printout. In the below confidence interval calculation we will use sdResidErr1
 Conf95 <- c(Beta_estimate - 1.96 * sdResidErr1 / Data [,sd(logGDP)]  / (nrow (Data)-1) ^0.5, Beta_estimate + 1.96 * sdResidErr1 / Data [,sd(logGDP)]  / (nrow (Data) -1) ^0.5)
 Conf95
-confint (reg_levlog)
 
 ```
+
+Coefficients and Confidence interval at 95% have been calculated with in built R functions as well as with statistical formulas.
+!!! BLA-BLA
 
 
 !!! BLA-BLA: worth noting that Alpha and Beta estimates are the same that we got earlier, and examined when printed the summary of reg_levlog model.
 
-3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
+### 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
+
+In order to do it, first we need to enhance our data with population. For that we downloaded 2014 population data form the same "World Development Indicators" website.
+
+``` {r Q3_Population}
+## Download and clean population data
+PopData <- fread ('Population_2014.csv')
+str (PopData)
+PopData <- PopData [PopData [[2]] == "SP.POP.TOTL"]   #filtering to Total Population only (where data in column 2 = "SP.POP.TOTL")
+PopData <- PopData [, -c(1,2,4)]
+names(PopData) <- c("Country", "Population")
+PopData <- PopData [, .(Population = as.numeric(Population)), by = Country]
+PopData <- PopData [!is.na(Population),]
+str (PopData)
+
+## Enhance Data with population info
+setkey(PopData, `Country`)
+setkey(Data, `country`)
+Data2 <- Data[PopData, nomatch=0] #inner join DT syntax
+str (Data2)
+# sanity check (values)
+Data2 [is.na(Population),]
+Data2 [country == "Hungary",]
+Data2 [country == "United States",]
+# Cool, we got data filled in for all
+```
+
+``` {r Q3_weighted model}
+reg_weight<- lm (life ~ logGDP, weight = Population, data = Data2)
+summary (reg_weight)
+ggplot (Data2, aes (x = logGDP, y = life, size = Population)) + 
+  geom_point(shape = 21, fill = "#009E73", alpha = 0.5, show.legend = FALSE) + 
+  scale_size_continuous(range = c(1, 15)) +
+  ggtitle ("Q3. Weighted Lev-Log Regression") +
+  labs(x="Log GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=logGDP,y=predict(reg_weight)),colour="blue",size = 1)
+  
+```
+
+
+!Bla-Bla. Ide kell majd az, hogy nagyon hasonlít az unweighted-re, mert a nagy population országok ott vannak (az eredeti) regressziós egyenes közelében
+
 
 Problem 2.2
 
