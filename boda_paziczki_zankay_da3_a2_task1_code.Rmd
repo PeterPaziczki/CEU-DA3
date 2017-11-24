@@ -169,7 +169,7 @@ The above graphs show that we are probably on the right track when trying to fin
 
 
 #### Level - Log Linear Regression
-``` {r_Q2_evLogRegression}
+``` {r Q2_evLogRegression}
 reg_levlog <- lm(life ~ logGDP, data=Data)
 summary (reg_levlog)
 #ggplot (Data, aes (x=logGDP, y = life )) + geom_point (size = 1.5) + 
@@ -367,10 +367,109 @@ Download hotels_all_nov21.csv. Pick a city. Consider hotels and hostels. Conside
 The goal of the exercise is to use information you have in your data to find a shortlist of five hotels and/or hostels that are good candidates for a good deal. You have to estimate a regression of prices (or log prices) on the other variables of your choice. You have to document your analysis and print the shortlist. 
 </span>
 
+First we load the file, then pick up a city randomly (happens to be Athens). Then filters to 'Hostel' and 'Hotel' types with minimum 2 stars. We then do some data cleaning, such as:
+- dropping those few that miss parameters that we might be interested in,
+- remove two duplicates.
+
+``` {r Q22_basic}
+#### Data Loading
+file <- 'hotels_all_nov21.csv'
+# exercise parameters
+MIN_STARS <-2
+hotels_all <- fread (file)
+str (hotels_all)
+
+#### Selecting a city randomly
+citycount <- length(hotels_all [, unique(city)])
+set.seed (28)
+selectindex <- round(runif (1, min =1, max = citycount),0)
+mycity <- hotels_all [, unique(city)][selectindex]
+mycity
+
+#### Filtering to Accomodation type and star
+#checking if accomodation types, to check if there are various spellings of "hotel" and "hostel" in the dataset
+hotels_all [city == mycity & stars >=2, unique (accommodation_type)]
+#filtering to selected city and requested star and accomodation types
+myhotels <- hotels_all [city == mycity & stars >=MIN_STARS & accommodation_type %in% c("Hotel", "Hostel"),]
+# str (myhotels)
+
+#### Data Cleaning 1: dropping those with missing parameters
+myhotels [is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount),]
+myhotels <- myhotels [!(is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount)),]
+
+#### Data Cleaning 2: dropping duplicates
+# looking for duplicates in some ways (ID, name, address)
+myhotels [,.N] - myhotels [,length(unique (address))]
+myhotels [, .N] - myhotels [,length(unique (name)) ] 
+# showing the duplicates
+myhotels [,.(name, .N), by = id][N>1,]
+myhotels [,.(name, .N), by = address][N>1,]
+myhotels [,.(address, .N), by = name][N>1,]
+# checking the other 2 on the list with identical names & addresses
+myhotels [name %in% c("Athens Lotus Hotel", "Metropolitan Hotel")]
+myhotels1 <- myhotels[!duplicated(myhotels[,id]),]
+```
+We assumed that 'distance' is the distance from the city center
+
+
+Next step is to filter extreme values.
+- remove those that are considered to be outside of Athens (apparently all those that are further away than the hotel with the highest distance in Piraeuswhich means that we conside everything that is further away then Piraeus as suburb not Athens).
+- we do not drop any hotel due to high price.
+
+``` {r Q2_extremevalues}
+max_in <- myhotels1 [city_actual == "Piraeus", max (distance)]
+myhotels2 <- myhotels1[distance <= max_in, ]
+myhotels2 [price >200,]  #checking who the very expensive ones are. After analyzing on web, we found tht these all are "normal" high priced hotels, we keep those.
+myhotels3 <- myhotels2 [, .(distance, stars, badge_excellence, rating, rating_reviewcount, price)] #remove not needed data
+
+```
+
 ### <span style="color:blue"> 2.2.1. Pick a set of variables. Describe all variables used in the analysis.
 </span>
 
-2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
+!!! I guess these are distance, stars, rating, badge_excellence, rating_reviewcount, price
+!!!BLA-BLA-BLA
+
+### <span style="color:blue"> 2.2.2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
+
+Amiket szerintem érdemes megnézni:
+lev-lev
+lev-log
+quadratic
+cubic
+
+``` {r Q2_nonlinears}
+### Creating binary variables out of of badge_excellence
+myhotels3 [, Gold := (badge_excellence == "Gold Award 2017") + 1]
+myhotels3 [, Loved := (badge_excellence == "Loved by guests") + 1]
+myhotels3 [, Top := (badge_excellence == "Top Hotel") + 1]
+
+### Function to create R-square for 4 models
+R2s <- function(x ,y){
+  tmpy <- y [which (x > 0)]   #to eliminate log (0) 
+  tmpx <- x [which (x > 0)]   #to eliminate log(0)
+  logx <- log(tmpx)    #to eliminate log(0)
+  sqx <- x ^2
+  cubx <- x^3
+  R2lin <- summary(lm(y~x))$r.squared
+  R2log <- summary(lm(tmpy~logx))$r.squared   #to eliminate log(0)
+  R2sqx <- summary(lm(y~x+sqx))$r.squared
+  R2cub <- summary(lm(y~x+sqx+cubx))$r.squared
+  return(c(R2lin, R2log,R2sqx, R2cub))
+}
+
+R2Table <- data.table (c("lev - lev lin", "lev - log", "Quadratic", "Qubic"), 
+                          R2s (myhotels3 [, distance], myhotels3 [, price]), 
+                          R2s (myhotels3 [, stars], myhotels3 [, price]),
+                          R2s (myhotels3 [, Gold], myhotels3 [, price]),
+                          R2s (myhotels3 [, Loved], myhotels3 [, price]),
+                          R2s (myhotels3 [, Top], myhotels3 [, price]),
+                          R2s (myhotels3 [, rating], myhotels3 [, price])
+                          )
+names(R2Table) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
+R2Table
+
+```
 
 3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
 
