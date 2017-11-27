@@ -189,11 +189,11 @@ Data[,res_reg_levlog := residuals(reg_levlog)]
 ```
 
 We seem to have rather small residual errors and pretty good R-squared, 66.5%, confirming the relationship between logGDP and Life Expectancy.
-The intercept estimate is 58.9839, which is hard to interpret in real life for practical reasons, it means that in a country with 0 logGDP the life expectancy at birth would be approx. 59 years on average. The slope estimate is 5.4607 which means that life expectancy is 0.054607 units higher on average for countries with 1% higher GDP per capita.
+The intercept estimate is 58.9839, which is hard to interpret in real life for practical reasons, it means that in a country with 0 logGDP the life expectancy at birth would be approx. 59 years on average. The slope estimate is 5.4607 which means that life expectancy is 0.54607 years higher on average in countries with 10% higher GDP per capita. The slope estimate is significant at 0.1%, with other words, life expectancy and log GDP per capita are correlated at a 99.9 
 
 Equatorial Guinea has the greatest negative residual, the life expectancy is `r abs(min(residuals(reg_levlog)))` lower that one could expect based on the regression. The next two countries with greatest negative residuals are Nigeria and Swaziland, -15.9 and -14.3 years respectively. The highest positive residuals are Vietnam, Solomin Islands and Nicaragua, the residuals are over 7 years, meaning that people live more than 7 years longer on average, as one could expect based on the GDP per capita.
 
-The seven countries with highest GDP per capita the residuals are all negative, which is quite unexpected. 
+The residuals of the seven countries with highest GDP per capita are all negative, which is quite unexpected. This is something that we are going to consider when creating piecewise linear splines.
 
 #### Log - Log regression
 ``` {r Q2_Log-Log}
@@ -253,7 +253,8 @@ ggplot(data = Data, aes(x=GDP, y=life)) +
 
 #### Piecewise Linear Spline
 
-In the lowess diagram we see that something is changing at about x = 4. We select the knots accordingly and build the PLS model accordingly.
+In the lowess diagram we have seen that something slope is changing at about x = 4. In addition to that in when having a log level regression We have uncovered that the seven countries with highest GDP per capita all have negative residuals, in all countries the life expectancy was below the regression line. Considering these observations we select the knot accordingly and build the PLS model accordingly.
+
 ``` {r Q2_PLS}
 
 # PIECEWISE LINEAR SPLINE IN LEVEL-LOG REGRESSION
@@ -267,6 +268,8 @@ ggplot(data = Data, aes(x=logGDP, y=life)) +
   geom_line(data=Data,aes(x=logGDP,y=predict(reg_PLS)),colour="blue",size = 1) +
   geom_vline(xintercept =knots,colour="red") 
 ```
+
+The R-squared of the regression is 67.28%. It is bit higher than the R-squared of the level log regression. It is not surprising because with two lines with possibly two different slopes we have to provide at least as good fit as with one linear. The slope of the first linear is 5.6889, shows positive relation between log GDP per capita and life expectancy, and it is significant at 0.1%. A slope of 5.6889 means, that below approximately 54,600 USD (log GDP per capita = 4) the life expectancy is 0.56889 years higher on average for countries with 10% higher GDP erp capita. The second linear beyond log GDP per capita 4 has a negative slope and it has captured that we have observed when doing a lowess regression. The slope estimate is -1.6650, but it is not significant at even 10%. This second short linear provides a better fit for 9 countries, meaning that the life expectancy is 0.16650 years lower on average in countries with 10% higher GDP per capita.
 
 #### Choosing the best model and evaluating it
 
@@ -289,6 +292,8 @@ RSq <- data.table (c("Level - Log  :  ",
                      ))
 pander(RSq)
 ```
+
+Quadratic and cubic polynomial regression also captured that change in the slope for countries with the highest GDP per capita, but level - log regression and linear spline were the ones that best captured the variance in y.
 
 #### Coefficient calculations, confidence interval
 !!! Alább azt tételezem fel, hogy a level-log-t választottuk az előző paragrafusban
@@ -367,9 +372,7 @@ ggplot (Data2, aes (x = logGDP, y = life, size = Population)) +
   
 ```
 
-
-!Bla-Bla. Ide kell majd az, hogy nagyon hasonlít az unweighted-re, mert a nagy population országok ott vannak (az eredeti) regressziós egyenes közelében
-
+When doing a level-log regression without considering the population, the slope estimate was 5.4607, it is now 5.8169, slightly higher. China and India have the highest population in the world and they are very close to the regression line and are approximately in the middle of the log GDP per capita sitribution, they don't alter the slope significantly. We can say that after considering the population as weight, life expectancy is 0.58169 years higher on average in countries with 10% higher GDP per capita.
 
 ##<span style="color:blue"> Problem 2.2
 
