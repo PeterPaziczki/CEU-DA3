@@ -625,13 +625,8 @@ ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
 
 ```
 
-The lowess regression shows that there there a strong negative relation between price and distance very close to the city center, but at about 1km far from the center there is a change in the relation. At approximately 1.5km far from the center the relation becomes negative again, but it is much flatter now than in the first section, at the very end it becomes totally flat. It is important to highlight that there are only a few observation in the 2-4 km range.
+The lowess regression shows that there is a strong negative relation between price and distance very close to the city center, but at about 1km away from the center there is a change in the relation. At approximately 1.5km the relation becomes negative again, but it is much flatter now than in the first section, at the very end it becomes totally flat. It is important to highlight that there are only a few observation in the 2-4 km range.
 
-Amiket szerintem érdemes megnézni:
-lev-lev
-lev-log
-quadratic
-cubic
 
 ``` {r Q222_nonlinears, results='hide'}
 ### Creating binary variables out of of badge_excellence
@@ -662,10 +657,23 @@ R2Table <- data.table (c("lev - lev lin", "lev - log", "Quadratic", "Qubic"),
                           R2s (myhotels3 [, rating], myhotels3 [, price])
                           )
 names(R2Table) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
+
+# below the same on log (price)
+
+R2Table_Log <- data.table (c("log - lev lin", "log - log", "Log Quadratic", "Log Qubic"), 
+                       R2s (myhotels3 [, distance], myhotels3 [, log (price)]), 
+                       R2s (myhotels3 [, stars], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, Gold], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, Loved], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, Top], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, rating], myhotels3 [, log(price)])
+)
+names(R2Table_Log) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
 ```
 
 ```{r Q224_results_of-R2Table}
 pander(R2Table)
+pander (R2Table_Log)
 ```
 
 
