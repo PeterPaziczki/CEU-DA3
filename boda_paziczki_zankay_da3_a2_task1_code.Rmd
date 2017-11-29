@@ -681,11 +681,11 @@ pander (R2Table_Log)
 As we saw in the price histogram, price is very much right skewed, we therefore analize log price.
 Based on R-square we select the following functional forms:
 
-- Distance: Cubic, because of the price - distance lowess chart we saw
+- Distance: Cubic, because of the price - distance lowess chart we saw (has local min and max too)
 
 - Starts: Linear, as the realtive R-square gains of anz higher order polinom would not justify the extra complexity
 
-- Gold dummy variable: due to its poor R-square we ignore it
+- Gold dummy variable: due to its poor R-square we probably ignore it, but let us see later
 
 - Loved dummy variable: we use the linear, as this is a binary so no point using any other
 
@@ -693,24 +693,40 @@ Based on R-square we select the following functional forms:
 
 ### <span style="color:blue"> 3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
 
-
+We consider the above parameters for multiple regression.
 ```{r Q223 multiple_regression}
-simplereg1 <- lm(lnprice ~ distance, data=myhotels3)
-simplereg2 <- lm(lnprice ~ rating, data=myhotels3)
-simplereg3 <- lm(lnprice ~ Gold, data=myhotels3)
-simplereg4 <- lm(lnprice ~ Loved, data=myhotels3)
-simplereg5 <- lm(lnprice ~ Top, data=myhotels3)
-
+myhotels3 [, distance_2 := distance ^2]
+myhotels3 [, distance_3 := distance ^3]
+myhotels3 [, rating_2 := rating ^2]
+multireg <- lm (log(price) ~ distance + distance_2 + distance_3 + stars + Top + Loved + rating + rating_2, data = myhotels3)
+multireg1 <- lm (log(price) ~ distance + distance_2 + distance_3 + stars + Gold + rating + rating_2, data = myhotels3)
+summary (multireg)
+summary (multireg1)
 ```
+
+R saquare seems to be fairly OK? much better compared to any simple regression of any shape.
+
+Looking at the coefficients we can see that some add little and close to zero, so let us see what happens to R square if we drop those variables and simplify the model.
+We drop: distance_2, distance_3, Gold, Loved.
+For the rets, the multiple regression is re-calculated.
+
+```{r Q223 multiple_regression_simplified}
+multireg2 <- lm (log(price) ~ distance + stars + Top + rating + rating_2, data = myhotels3)
+summary (multireg2)
+```
+
+As we see it was a good simplification: we got rid of a few "complicated" variables while kept R-square almost as high as it was.
+
+
 
 Doing the t-tests for each regression
 
 ```{r Q223 t-test}
-coeftest(simplereg1, vcov=sandwich)
-coeftest(simplereg2, vcov=sandwich)
-coeftest(simplereg3, vcov=sandwich)
-coeftest(simplereg4, vcov=sandwich)
-coeftest(simplereg5, vcov=sandwich)
+#coeftest(simplereg1, vcov=sandwich)
+#coeftest(simplereg2, vcov=sandwich)
+#coeftest(simplereg3, vcov=sandwich)
+#coeftest(simplereg4, vcov=sandwich)
+#coeftest(simplereg5, vcov=sandwich)
 
 multireg3 <- lm(lnprice ~ distance + rating + Gold + Loved + Top + stars, data=myhotels3)
 coeftest(multireg3, vcov=sandwich)
@@ -722,9 +738,9 @@ coeftest(multireg3, vcov=sandwich)
 We have picked the slope of log price on distance... 
 
 ```{r Q224_slope1}
-summary(simplereg1)
-confint(simplereg1)
-ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
+#summary(simplereg1)
+#onfint(simplereg1)
+#ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
   geom_point(size=0.5, colour="red") +
   geom_smooth(method="lm", colour="black")
 
@@ -733,9 +749,9 @@ ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
 ...and the slope of log price on rating
 
 ```{r Q224_slope2}
-summary(simplereg2)
-confint(simplereg2)
-ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
+#summary(simplereg2)
+#confint(simplereg2)
+#ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
   geom_point(size=0.5, colour="red") +
   geom_smooth(method="lm", colour="black")
 
