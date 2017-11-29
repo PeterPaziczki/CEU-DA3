@@ -601,9 +601,9 @@ It has a range of 1 - 4.8, with one decimal. These ratings have been given by pr
 
 ### <span style="color:blue"> 2.2.2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
 
-We were investiagting potential non-linearity by using lowess non-parametric regression first. This regression is supposed to uncover potential non-linearities. 
+We were investiagting potential non-linearity by using lowess non-parametric regression first. This regression is supposed to uncover potential non-linearities. At first let's estimate a lowess regression on lnprice and distance.
 
-```{r Q223_lowessGraph, results='hide'}
+```{r Q223_lowessGraph_distance, results='hide'}
 # Estimating a lowess non-parametric regression on the data set.
 regQ2_loess <- loess (lnprice ~ distance, myhotels3)
 ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
@@ -611,8 +611,13 @@ ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
   ggtitle ("Q223. Lowess regression") + labs(x="distance",y="lnprice") +
   geom_line(data=myhotels3,aes(x=distance,y=predict(regQ2_loess)),colour="blue",size = 1)
 summary (regQ2_loess)
+```
 
-#tesztek
+The lowess regression shows that there is a strong negative relation between price and distance very close to the city center, but at about 1km away from the center there is a change in the relation. At approximately 1.5km the relation becomes negative again, but it is much flatter now than in the first section, at the very end it becomes totally flat. It is important to highlight that there are only a few observation in the 2-4 km range.
+
+Then let's estimate a lowess regression on ln price and rating.
+
+```{r Q223_lowessGraph_rating, results='hide'}
 
 regQ2_loess_rating <- loess (lnprice ~ rating, myhotels3)
 ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
@@ -621,11 +626,9 @@ ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
   geom_line(data=myhotels3,aes(x=rating,y=predict(regQ2_loess_rating)),colour="blue",size = 1)
 
 # no chart for stars, as it is categoric
-
 ```
 
-The lowess regression shows that there is a strong negative relation between price and distance very close to the city center, but at about 1km away from the center there is a change in the relation. At approximately 1.5km the relation becomes negative again, but it is much flatter now than in the first section, at the very end it becomes totally flat. It is important to highlight that there are only a few observation in the 2-4 km range.
-
+It shows the beyond rating 2 there is a general positive relation between lnprice and rating.
 
 ``` {r Q222_nonlinears, results='hide'}
 ### Creating binary variables out of of badge_excellence
@@ -677,38 +680,16 @@ pander (R2Table_Log)
 ```
 As we saw in the price histogram, price is very much right skewed, we therefore analize log price.
 Based on R-square we select the following functional forms:
+
 - Distance: Cubic, because of the price - distance lowess chart we saw
+
 - Starts: Linear, as the realtive R-square gains of anz higher order polinom would not justify the extra complexity
+
 - Gold dummy variable: due to its poor R-square we ignore it
+
 - Loved dummy variable: we use the linear, as this is a binary so no point using any other
+
 - Rating: Quadratic, because of the price - rating lowess chart we saw (close to parabola)
-
-
-``` {r Q224_LevLogRegression}
-regQ2_levlog <- lm(distance ~ lnprice, data=myhotels3)
-
-#ggplot (Data, aes (x=logGDP, y = life )) + geom_point (size = 1.5) + 
-#ggtitle("Q2. Level - Log linear regression") + labs(x = "Log GDP per capita [1000 USD]", y = "Life Expectancy [year]") + 
-#geom_smooth (method = "lm")
-
-ggplot (myhotels3, aes (x=lnprice, y = distance )) + geom_point (size = 1.5) + 
-  ggtitle("Q2. Level - Log linear Regression") + labs(x = "lnprice", y = "Distance") +
-  geom_line(data=myhotels3,aes(x=lnprice,y=predict(regQ2_levlog)),colour="blue",size = 1) + geom_smooth(method = 'lm')
-
-regQ2_loglev <- lm(lnprice ~ distance, data=myhotels3)
-
-#ggplot (Data, aes (x=logGDP, y = life )) + geom_point (size = 1.5) + 
-#ggtitle("Q2. Level - Log linear regression") + labs(x = "Log GDP per capita [1000 USD]", y = "Life Expectancy [year]") + 
-#geom_smooth (method = "lm")
-
-ggplot (myhotels3, aes (x=distance, y = lnprice )) + geom_point (size = 1.5) + 
-  ggtitle("Q2. Log - Level linear Regression") + labs(x = "Distance", y = "lnprice") +
-  geom_line(data=myhotels3,aes(x=distance,y=predict(regQ2_loglev)),colour="blue",size = 1) + geom_smooth(method = 'lm')
-
-summary (reg_levlog)
-Data[,res_reg_levlog := residuals(reg_levlog)]
-```
-
 
 ### <span style="color:blue"> 3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
 
@@ -748,7 +729,6 @@ ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
   geom_smooth(method="lm", colour="black")
 
 ```
-
 
 ...and the slope of log price on rating
 
@@ -802,9 +782,11 @@ rating      0.6017687 0.8950387
 
 Positive correlation, slope estimated +0.75.The t(p) value is close to zero here as well, indicating a significant relationship between price and rating. R squared is mutch higher then in price/distance regression (although still not high), the meaning is that the variance of rating gives a better explanation of the variance of price then we saw in case of price on distance. Lower Residual Standard Error of price/rating regression compared to price/ distance also confirming the stronger relation between variables, by showing a better fit of regression.
 
-### <span style="color:blue"> 5. Describe your strategy to find the best deal. 
+### <span style="color:blue"> 5. Describe your strategy to find the best deal.
 
-The aim would be to get the cheapest offer on a hotel that still meets certain described personal requirements. After describing the personal part, the goal is to find matching hotels with the most negative residuals. To do this we have to filter on variables of personal interest. We chose distance, stars and rating. We would like to stay in a 3 km range of city center in a 3 or more star hotel with a rating minimum of 4.1 (median). 
+The strategy to find the best deal is to find offers that have the largest negative residuals. The regression line tells us what would be the price on average. The greater the residual is in a negative sense, the better deal we find.
+
+To do this we have to filter on variables of personal interest. We chose distance, stars and rating. We would like to stay in a 3 km range of city center in a 3 or more star hotel with a rating minimum of 4.1 (median). 
 
 ```{r Q224_strategy}
 myhotels_Q5 <-myhotels2[accommodation_type=="Hotel"][stars>=3][rating>=4.1] #### itt hotel 8 helyett myhotels2 Imre verziója
