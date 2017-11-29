@@ -632,18 +632,12 @@ ggplot (myhotels3, aes (x=distance, y = lnprice )) + geom_point (size = 1.5) +
 summary (reg_levlog)
 Data[,res_reg_levlog := residuals(reg_levlog)]
 ```
-```
-
 
 
 ### <span style="color:blue"> 3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
 
 
-```{r Q223}
-
-
-
-
+```{r Q223 multiple_regression}
 simplereg1 <- lm(lnprice ~ distance, data=myhotels3)
 simplereg2 <- lm(lnprice ~ rating, data=myhotels3)
 simplereg3 <- lm(lnprice ~ Gold, data=myhotels3)
@@ -654,8 +648,7 @@ simplereg5 <- lm(lnprice ~ Top, data=myhotels3)
 
 Doing the t-tests for each regression
 
-```{r Q223}
-
+```{r Q223 t-test}
 coeftest(simplereg1, vcov=sandwich)
 coeftest(simplereg2, vcov=sandwich)
 coeftest(simplereg3, vcov=sandwich)
@@ -671,7 +664,7 @@ stargazer(list(simplereg1), list(simplereg2), list(simplereg3), list(multireg3),
 
 We have picked the slope of log price on distance... 
 
-```{r Q224}
+```{r Q224_slope1}
 summary(simplereg1)
 confint(simplereg1)
 ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
@@ -683,7 +676,7 @@ ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
 
 ...and the slope of log price on rating
 
-```{r Q224}
+```{r Q224_slope2}
 summary(simplereg2)
 confint(simplereg2)
 ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
@@ -737,7 +730,7 @@ Positive correlation, slope estimated +0.75.The t(p) value is close to zero here
 
 The aim would be to get the cheapest offer on a hotel that still meets certain described personal requirements. After describing the personal part, the goal is to find matching hotels with the most negative residuals. To do this we have to filter on variables of personal interest. We chose distance, stars and rating. We would like to stay in a 3 km range of city center in a 3 or more star hotel with a rating minimum of 4.1 (median). 
 
-```{r Q224}
+```{r Q224_strategy}
 myhotels_Q5 <-myhotels2[accommodation_type=="Hotel"][stars>=3][rating>=4.1] #### itt hotel 8 helyett myhotels2 Imre verziója
 summary(myhotels_Q5)
 hotelresid <- lm(price ~ distance + rating + stars, data=myhotels_Q5)
