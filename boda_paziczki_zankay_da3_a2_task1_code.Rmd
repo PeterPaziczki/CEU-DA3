@@ -617,10 +617,14 @@ summary (regQ2_loess)
 regQ2_loess_rating <- loess (lnprice ~ rating, myhotels3)
 ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
   geom_point(size=1.5) +
-  ggtitle ("Q223. Lowess regression") + labs(x="distance",y="lnprice") +
+  ggtitle ("Q223. Lowess regression") + labs(x="rating",y="lnprice") +
   geom_line(data=myhotels3,aes(x=rating,y=predict(regQ2_loess_rating)),colour="blue",size = 1)
 
-
+regQ2_loess_star <- loess (lnprice ~ stars, myhotels3)
+ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
+  geom_point(size=1.5) +
+  ggtitle ("Q223. Lowess regression") + labs(x="star",y="lnprice") +
+  geom_line(data=myhotels3,aes(x=rating,y=predict(regQ2_loess_star)),colour="blue",size = 1)
 
 
 ```
@@ -682,7 +686,7 @@ Based on R-square we select the following functional forms:
 - Starts: Linear, as the realtive R-square gains of anz higher order polinom would not justify the extra complexity
 - Gold dummy variable: due to its poor R-square we ignore it
 - Loved dummy variable: we use the linear, as this is a binary so no point using any other
-- Rating: Quadratic, as we don't see that a higher order adds so much gain in R square. 
+- Rating: Quadratic, because of the price - rating lowess chart we saw (close to parabola)
 
 
 ``` {r Q224_LevLogRegression}
