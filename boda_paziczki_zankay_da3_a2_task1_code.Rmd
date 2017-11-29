@@ -620,12 +620,7 @@ ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
   ggtitle ("Q223. Lowess regression") + labs(x="rating",y="lnprice") +
   geom_line(data=myhotels3,aes(x=rating,y=predict(regQ2_loess_rating)),colour="blue",size = 1)
 
-regQ2_loess_star <- loess (lnprice ~ stars, myhotels3)
-ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
-  geom_point(size=1.5) +
-  ggtitle ("Q223. Lowess regression") + labs(x="star",y="lnprice") +
-  geom_line(data=myhotels3,aes(x=rating,y=predict(regQ2_loess_star)),colour="blue",size = 1)
-
+# no chart for stars, as it is categoric
 
 ```
 
