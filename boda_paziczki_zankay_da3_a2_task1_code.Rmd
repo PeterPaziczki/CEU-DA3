@@ -24,17 +24,8 @@ knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```{r load}
 library(data.table)
 library(ggplot2)
-#library(haven)
 library(lspline)
 library(pander)
-# install.packages("arm")
-#library(arm)
-# install.packages("readr")
-#library(readr)
-# install.packages("lmtest")
-#library(lmtest)
-# install.packages("splines")
-#library(splines)
 
 #presentation parameters
 theme_update(plot.title = element_text(hjust = 0.5, size = 12))
@@ -432,50 +423,89 @@ Download hotels_all_nov21.csv. Pick a city. Consider hotels and hostels. Conside
 The goal of the exercise is to use information you have in your data to find a shortlist of five hotels and/or hostels that are good candidates for a good deal. You have to estimate a regression of prices (or log prices) on the other variables of your choice. You have to document your analysis and print the shortlist. 
 </span>
 
-First we load the file, then pick up a city randomly (happens to be Athens). Then filters to 'Hostel' and 'Hotel' types with minimum 2 stars. We then do some data cleaning, such as:
-- dropping those few that miss parameters that we might be interested in,
-- remove two duplicates.
+``` {r Q22_basic, results='hide'}
+#loading necessry libraries
+#install.packages("haven")
+library(haven)
+#install.packages("dplyr")
+library(dplyr)
+library(lmtest)
+library(sandwich)
+library(stargazer)
 
-``` {r Q22_basic}
-#### Data Loading
-file <- 'hotels_all_nov21.csv'
-# exercise parameters
-MIN_STARS <-2
-hotels_all <- fread (file)
-str (hotels_all)
+# loading the hotels_all_nov21.csv file to a data table object
+hotel_raw <- fread('hotels_all_nov21.csv', encoding = 'UTF-8')
 
-#### Selecting a city randomly
-citycount <- length(hotels_all [, unique(city)])
-set.seed (28)
-selectindex <- round(runif (1, min =1, max = citycount),0)
-mycity <- hotels_all [, unique(city)][selectindex]
-mycity
+str(hotel_raw)
+# checking each categories, setting our choices
+City <- "Athens" # city of our choice
+MIN_STARS <-2 # minimum number of stars
+MAX_DIST <- 6.25
 
-#### Filtering to Accomodation type and star
-#checking if accomodation types, to check if there are various spellings of "hotel" and "hostel" in the dataset
-hotels_all [city == mycity & stars >=2, unique (accommodation_type)]
-#filtering to selected city and requested star and accomodation types
-myhotels <- hotels_all [city == mycity & stars >=MIN_STARS & accommodation_type %in% c("Hotel", "Hostel"),]
-# str (myhotels)
+hotel_min2stars <-hotel_raw[city == City][accommodation_type=="Hotel"][stars>=MIN_STARS]
+hostel_min2stars <-hotel_raw[city == City][accommodation_type=="Hostel"][stars>=MIN_STARS]
+str(hotel_min2stars)
+str(hostel_min2stars)
 
-#### Data Cleaning 1: dropping those with missing parameters
-myhotels [is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount),]
-myhotels <- myhotels [!(is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount)),]
+#merging the hotels and hostels with at least 2 stars
+hotel3 <-merge(hotel_min2stars, hostel_min2stars, all=TRUE)
 
-#### Data Cleaning 2: dropping duplicates
-# looking for duplicates in some ways (ID, name, address)
-myhotels [,.N] - myhotels [,length(unique (address))]
-myhotels [, .N] - myhotels [,length(unique (name)) ] 
-# showing the duplicates
-myhotels [,.(name, .N), by = id][N>1,]
-myhotels [,.(name, .N), by = address][N>1,]
-myhotels [,.(address, .N), by = name][N>1,]
-# checking the other 2 on the list with identical names & addresses
-myhotels [name %in% c("Athens Lotus Hotel", "Metropolitan Hotel")]
-myhotels1 <- myhotels[!duplicated(myhotels[,id]),]
+# taking another approach, this time without separate checking
+hotel4 <- hotel_raw[city==City & stars >=MIN_STARS & accommodation_type %in% c("Hotel","Hostel")]
+
+# checking if Hotel and Hostel data are not fragmented in dataset due to improper typing
+table(hotel3$accommodation_type)
+
+# dropping unnecessary columns
+# now let's keep just the columns of selected variables
+hotel4 <- hotel4[, .(name, distance, stars, badge_excellence, rating, rating_reviewcount, price, address)]
+# distance, price, stars, rating, badge excellence and rating reviewcount variables have been selected for further analysis.
+
+# checking if there is missing data in any of the selected columns
+hotel4[is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount),]
+
+# dropping lines with missing data
+hotel5 <- hotel4[!(is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount)),]
+data_missing <- hotel4[(is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount)),.N]
+str(hotel5)
+
+# checking if there is dupplication by name or address
+pander(hotel5[duplicated(hotel5),])
+hotel5[!duplicated(hotel5),]
+
+hotel5 [,.N] - hotel5 [,length(unique (address))]
+hotel5 [,.N] - hotel5 [,length(unique (name)) ]
+hotel5 [,.(name, .N), by = address][N>1,] # hotels with the same address
+hotel5 [,.(address, .N), by = name][N>1,] # duplicates by name
+
+# dropping duplications
+hotel6 <-hotel5 %>% distinct(name, .keep_all = TRUE)
+hotel7 <-hotel6 %>% distinct(address, .keep_all = TRUE)
+hotel7$address <- NULL # address is not needed anymore, dropping it
+str(hotel7)
+n_duplicate <- hotel5[,.N] - hotel7[,.N]
+
+# lets take hotels maximum 1 hour walk (6.25 km) from city center (you may prefer walking due to traffic jams, etc - but not too much walking...)
+hotel8 <- hotel7[distance <= MAX_DIST, ]
+str(hotel8)
 ```
-We assumed that 'distance' is the distance from the city center
 
+First we have loaded the file and picked a city randomly (happened to be Athens). We have filtered down the data to accommodation types 'Hostel' and 'Hotel' with at least 2 stars. After narrowing down the data we have done further data cleaning. We are interested in a few variables, such as distance from the city center, price, number of stars, rating, rating viewcounts, different badges of excellence the hotel or hostel might have and distance, all other variables are excluded. First we have dropped `r data_missing` observations that miss parameters we might be interested in. Then we have dropped `r n_duplicate` duplicates, there were hotels with the same address, and a few hotels had more addresses, these have been sorted out. We wanted to limit our investigation to hotels and hostels that are not futher than 6.25km, which is approximately a one hour walk.
+
+```{r}
+# checking types of badge excellence
+table(hotel8$badge_excellence)
+# as this variable is obviously categorical we transform it to binary variable
+hotel8[, Gold := (badge_excellence == "Gold Award 2017")+1]
+hotel8[, Loved := (badge_excellence == "Loved by guests")+1]
+hotel8[, Top := (badge_excellence == "Top Hotel")+1]
+
+Gold <- as.numeric(hotel8$Gold)-1
+Loved <- as.numeric(hotel8$Loved)-1
+Top <- as.numeric(hotel8$Top)-1
+list(Top)
+summary(hotel8)
+```
 
 Next step is to filter extreme values.
 - remove those that are considered to be outside of Athens (apparently all those that are further away than the hotel with the highest distance in Piraeuswhich means that we conside everything that is further away then Piraeus as suburb not Athens).
@@ -493,7 +523,32 @@ myhotels3 <- myhotels2 [, .(distance, stars, badge_excellence, rating, rating_re
 </span>
 
 !!! I guess these are distance, stars, rating, badge_excellence, rating_reviewcount, price
-!!!BLA-BLA-BLA
+!!!BLA-BLA-BL
+
+Now we need to describe all the variables we have. Let's have a scatterplot first with distance on the x axis and price on the y axis.
+
+```{r Q22_statistics_of_variables}
+ggplot(hotel8, aes(x=distance, y=price)) + geom_point(shape = 1) + ggtitle(labs(title = "Q2. Scatterplot of price on distance", x = "Distance from the city center [km]", y = "Price [EUR]"))
+
+# SUMMARY STATISTICS ON PRICE
+qplot(hotel8$price, geom="histogram", binwidth=20) + theme_bw() + ggtitle(labs(title = "Q2. Histogram of price variable", x = "Price [EUR]"))
+price_stat<-hotel8[,.(mean_price = mean(price) , sd_price = sd(price), 
+                      min_price = min(price) , max_price = max(price), 
+                      p50=quantile(price,.50), p95=quantile(price,.95), n=.N )]
+pander(price_stat)
+```
+
+BLA BLA
+
+```{r}
+# SUMMARY STATISTICS ON DISTANCE
+qplot(hotel8$distance, geom="histogram", binwidth=0.4) + theme_bw() + ggtitle(labs(title = "Q2. Histogram of distance variable", x = "Distance from the city center [km]"))
+
+distance_stat <-hotel8[,.(mean_dist = mean(distance) , sd_dist = sd(distance),
+                          min_dist = min(distance) , max_dist = max(distance),
+                          p50 = quantile(distance,.50), p95 = quantile(distance,.95), n=.N )]
+pander(distance_stat)
+```
 
 ### <span style="color:blue"> 2.2.2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
 
@@ -504,11 +559,6 @@ quadratic
 cubic
 
 ``` {r Q2_nonlinears}
-### Creating binary variables out of of badge_excellence
-myhotels3 [, Gold := (badge_excellence == "Gold Award 2017") + 1]
-myhotels3 [, Loved := (badge_excellence == "Loved by guests") + 1]
-myhotels3 [, Top := (badge_excellence == "Top Hotel") + 1]
-
 ### Function to create R-square for 4 models
 R2s <- function(x ,y){
   tmpy <- y [which (x > 0)]   #to eliminate log (0) 
@@ -534,6 +584,38 @@ R2Table <- data.table (c("lev - lev lin", "lev - log", "Quadratic", "Qubic"),
 names(R2Table) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
 R2Table
 
+
+# =====
+  
+  
+  
+```{r}
+R2s <- function(x ,y){
+  tmpy <- y [which (x > 0)]   #to eliminate log (0) 
+  tmpx <- x [which (x > 0)]   #to eliminate log(0)
+  logx <- log(tmpx)    #to eliminate log(0)
+  sqx <- x ^2
+  cubx <- x^3
+  R2lin <- summary(lm(y~x))$r.squared
+  R2log <- summary(lm(tmpy~logx))$r.squared   #to eliminate log(0)
+  R2sqx <- summary(lm(y~x+sqx))$r.squared
+  R2cub <- summary(lm(y~x+sqx+cubx))$r.squared
+  return(c(R2lin, R2log,R2sqx, R2cub))
+}
+
+R2Table <- data.table (c("lev - lev lin", "lev - log", "Quadratic", "Qubic"), 
+                       R2s (hotel9[, distance], hotel9 [, price]), 
+                       R2s (hotel9 [, stars], hotel9 [, price]),
+                       R2s (hotel9 [, Gold], hotel9 [, price]),
+                       R2s (hotel9 [, Loved], hotel9 [, price]),
+                       R2s (hotel9 [, Top], hotel9 [, price]),
+                       R2s (hotel9 [, rating], hotel9 [, price]))
+names(R2Table) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
+R2Table
+summary(R2Table)
+
+```
+#### itt átváltható az Imre által használt  myhotel3 a hotel9 névre, de Imre kihagyta a hotel nevét az ő táblájából.
 ```
 
 3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
