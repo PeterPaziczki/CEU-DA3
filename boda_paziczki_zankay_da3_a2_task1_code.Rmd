@@ -99,6 +99,11 @@ Garbage [, country]
 SuspectedGarbage [ c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),country]
 #Removing all non country entries from the database and keeping only countries
 Data <- Data[!country %in% Garbage [,country]]
+
+# creating a csv 
+Data_to_csv <- Data
+Data_to_csv$logGDP <- NULL
+write.csv(Data_to_csv, file = "dataset_for_2.1.csv")
 ```
 
 The `r Garbage[,.N]` entries have been dropped because of being marked as non-countries. After data cleaning we have `r Data[,.N]` countries to investigate.
@@ -373,6 +378,36 @@ Conf95
 # Coefficients and Confidence interval at 95% have been calculated with built-in R functions as well as with statistical formulas. It is worth noting that Alpha and Beta estimates are the same that we got earlier, and examined when printed the summary of reg_levlog model.
 ```
 
+Confidence interval (CI) of the predicted value tells us where to expect average y given the value of x in the population represented by the data.
+In the below two charts we put up the 95% mean and confidence intervales for lowess - linear (level - log) and lowess - PLS regressions.
+The reason why we selected lowess as a comparison base is that it is supposed to be the closest fit.
+
+```{r Q2_interpreting_visualizing}
+plx_lowess <- predict (reg_loess, se = T)
+plx_levlog <- predict (reg_levlog, se = T)
+plx_PLS <- predict (reg_PLS, se = T)
+
+
+ggplot(data = Data, aes(x=logGDP, y=life)) +
+  ggtitle ("Q2. Lowess and Linear with Confidence intervals at 95%") + labs(x="Log GDP per capita, PPP [USD]",y="Life expectancy at birth [years]") +
+  geom_line(data=Data, aes(x=logGDP,y=plx_lowess$fit),colour="blue",size = 1) + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit - qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit + qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") +
+  geom_line(data=Data,aes(x=logGDP,y=plx_levlog$fit),colour="red",size = 1)+
+  geom_line(data=Data, aes(x = logGDP, y = plx_levlog$fit - qt(0.975, plx_levlog$df)*plx_levlog$se), lty = 4, colour="red") +
+  geom_line(data=Data, aes(x = logGDP, y = plx_levlog$fit + qt(0.975, plx_levlog$df)*plx_levlog$se), lty = 4, colour="red") +
+  theme(panel.background = element_blank())
+  
+ggplot(data = Data, aes(x=logGDP, y=life)) +
+  ggtitle ("Q2. Lowess and PLS with Confidence intervals at 95%") + labs(x="Log GDP per capita, PPP [USD]",y="Life expectancy at birth [years]") +
+  geom_line(data=Data, aes(x=logGDP,y=plx_lowess$fit),colour="blue",size = 1) + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit - qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit + qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") +
+  geom_line(data=Data,aes(x=logGDP,y=plx_PLS$fit),colour="red",size = 1) + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_PLS$fit - qt(0.975, plx_PLS$df)*plx_PLS$se), lty = 4, colour="red") +
+  geom_line(data=Data, aes(x = logGDP, y = plx_PLS$fit + qt(0.975, plx_PLS$df)*plx_PLS$se), lty = 4, colour="red") +
+  theme(panel.background = element_blank())
+```
 
 ### <span style="color:blue"> 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
 </span>
@@ -557,7 +592,7 @@ It has a range of 1 - 4.8, with one decimal. These ratings have been given by pr
 
 We were investiagting potential non-linearity by using lowess non-parametric regression first. This regression is supposed to uncover potential non-linearities. 
 
-```{r Q223_lowessGraph}
+```{r Q223_lowessGraph, results='hide'}
 # Estimating a lowess non-parametric regression on the data set.
 regQ2_loess <- loess (lnprice ~ distance, myhotels3)
 ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
@@ -575,7 +610,7 @@ lev-log
 quadratic
 cubic
 
-``` {r Q222_nonlinears}
+``` {r Q222_nonlinears, results='hide'}
 ### Creating binary variables out of of badge_excellence
 myhotels3 [, Gold := (badge_excellence == "Gold Award 2017") + 0.1]
 myhotels3 [, Loved := (badge_excellence == "Loved by guests") + 0.1]
@@ -604,6 +639,9 @@ R2Table <- data.table (c("lev - lev lin", "lev - log", "Quadratic", "Qubic"),
                           R2s (myhotels3 [, rating], myhotels3 [, price])
                           )
 names(R2Table) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
+```
+
+```{r Q224_results_of-R2Table}
 pander(R2Table)
 ```
 
