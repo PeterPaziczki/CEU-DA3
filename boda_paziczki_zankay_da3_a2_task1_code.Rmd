@@ -409,6 +409,17 @@ ggplot(data = Data, aes(x=logGDP, y=life)) +
   theme(panel.background = element_blank())
 ```
 
+What we see is that both PLS and the linear regression curves are within the CI bounds of lowess, and vica versa. 
+Also, the confidence intervals around the linear and lowess overlap over the entire range of data, and the same is true to the PLS and lowess relation.
+These suggest that both are pretty good estimators.
+
+We would keep the linear (level - log) model or the following reasons:
+- In R square this is very close to the best models (which is PLS), the difference in very small,
+- The simple linear has a big advantage: its simplicity,
+- PLS shows some negative slope towards the high end oog Log GDP, something that we do not observe in the lowess.
+
+For very similar reasons we prefer the linera level - log compared to some other models that have marginally better R-square, such as Quadratic Level -Log or Cubic Level - Log.
+
 ### <span style="color:blue"> 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
 </span>
 
@@ -600,6 +611,18 @@ ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
   ggtitle ("Q223. Lowess regression") + labs(x="distance",y="lnprice") +
   geom_line(data=myhotels3,aes(x=distance,y=predict(regQ2_loess)),colour="blue",size = 1)
 summary (regQ2_loess)
+
+#tesztek
+
+regQ2_loess_rating <- loess (lnprice ~ rating, myhotels3)
+ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
+  geom_point(size=1.5) +
+  ggtitle ("Q223. Lowess regression") + labs(x="distance",y="lnprice") +
+  geom_line(data=myhotels3,aes(x=rating,y=predict(regQ2_loess_rating)),colour="blue",size = 1)
+
+
+
+
 ```
 
 The lowess regression shows that there there a strong negative relation between price and distance very close to the city center, but at about 1km far from the center there is a change in the relation. At approximately 1.5km far from the center the relation becomes negative again, but it is much flatter now than in the first section, at the very end it becomes totally flat. It is important to highlight that there are only a few observation in the 2-4 km range.
