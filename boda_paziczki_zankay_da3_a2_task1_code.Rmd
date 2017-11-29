@@ -4,10 +4,10 @@ author:
 - name: Peter Paziczki
 - name: Imre Boda
 - name: Balazs Zankay
-date: '2017 november 28'
+date: "2017 november 28"
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
   word_document: default
 ---
 
@@ -683,7 +683,7 @@ Based on R-square we select the following functional forms:
 
 - Distance: Cubic, because of the price - distance lowess chart we saw (has local min and max too)
 
-- Starts: Linear, as the realtive R-square gains of anz higher order polinom would not justify the extra complexity
+- Stars: Linear, as the realtive R-square gains of anz higher order polinom would not justify the extra complexity
 
 - Gold dummy variable: due to its poor R-square we probably ignore it, but let us see later
 
@@ -735,14 +735,16 @@ coeftest(multireg3, vcov=sandwich)
 
 ### <span style="color:blue"> 4. Pick two slope coefficients, interpret them, and compute and interpret their 95% CI.
 
+Let's pick stars, based on the results we can observe that it is significant at 0.1%. The lsope means that price is x% higher for observations with one more star.
+
+Rating is significant at 1% but not significant at 0.1%.
+
 We have picked the slope of log price on distance... 
 
 ```{r Q224_slope1}
 #summary(simplereg1)
 #onfint(simplereg1)
-#ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
-  geom_point(size=0.5, colour="red") +
-  geom_smooth(method="lm", colour="black")
+#ggplot(data = myhotels3, aes(x=distance, y=lnprice)) + geom_point(size=0.5, colour="red") + geom_smooth(method="lm", colour="black")
 
 ```
 
@@ -751,9 +753,7 @@ We have picked the slope of log price on distance...
 ```{r Q224_slope2}
 #summary(simplereg2)
 #confint(simplereg2)
-#ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
-  geom_point(size=0.5, colour="red") +
-  geom_smooth(method="lm", colour="black")
+#ggplot(data = myhotels3, aes(x=rating, y=lnprice)) + geom_point(size=0.5, colour="red") + geom_smooth(method="lm", colour="black")
 
 ```
 Interpretations.
