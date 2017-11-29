@@ -472,7 +472,7 @@ The goal of the exercise is to use information you have in your data to find a s
 
 ``` {r Q22_basic, results='hide'}
 library(lmtest)
-library(stargazer)
+# library(stargazer)
 library(sandwich)
 
 #### Data Loading
@@ -671,10 +671,18 @@ R2Table_Log <- data.table (c("log - lev lin", "log - log", "Log Quadratic", "Log
 names(R2Table_Log) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
 ```
 
+Below is a summary on the R squares of the various linear and non linear regressions. In the first table it is for price level, in the second one for log price.
 ```{r Q224_results_of-R2Table}
 pander(R2Table)
 pander (R2Table_Log)
 ```
+As we saw in the price histogram, price is very much right skewed, we therefore analize log price.
+Based on R-square we select the following functional forms:
+- Distance: Cubic, because of the price - distance lowess chart we saw
+- Starts: Linear, as the realtive R-square gains of anz higher order polinom would not justify the extra complexity
+- Gold dummy variable: due to its poor R-square we ignore it
+- Loved dummy variable: we use the linear, as this is a binary so no point using any other
+- Rating: Quadratic, as we don't see that a higher order adds so much gain in R square. 
 
 
 ``` {r Q224_LevLogRegression}
@@ -726,7 +734,7 @@ coeftest(simplereg5, vcov=sandwich)
 
 multireg3 <- lm(lnprice ~ distance + rating + Gold + Loved + Top + stars, data=myhotels3)
 coeftest(multireg3, vcov=sandwich)
-stargazer(list(simplereg1), list(simplereg2), list(simplereg3), list(multireg3), digits=2, out="hotels_reg2.tex")
+#stargazer(list(simplereg1), list(simplereg2), list(simplereg3), list(multireg3), digits=2, out="hotels_reg2.tex")
 ```
 
 ### <span style="color:blue"> 4. Pick two slope coefficients, interpret them, and compute and interpret their 95% CI.
