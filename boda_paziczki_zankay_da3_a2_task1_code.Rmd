@@ -4,7 +4,7 @@ author:
 - name: Peter Paziczki
 - name: Imre Boda
 - name: Balazs Zankay
-date: '2017 november 22'
+date: '2017 november 28'
 output:
   html_document: default
   pdf_document: default
@@ -18,24 +18,15 @@ text-align: justify}
 
 ```{r global_options, include=FALSE}
 rm(list=ls())
-knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```
 
 ```{r load}
 library(data.table)
 library(ggplot2)
-#library(haven)
 library(lspline)
 install.packages("pander")
 library(pander)
-# install.packages("arm")
-#library(arm)
-# install.packages("readr")
-#library(readr)
-# install.packages("lmtest")
-#library(lmtest)
-# install.packages("splines")
-#library(splines)
 
 #presentation parameters
 theme_update(plot.title = element_text(hjust = 0.5, size = 12))
@@ -91,17 +82,16 @@ Data [, "GDP"] <- Data [, .(GDP = GDP/1000)]
 Data [, logGDP := log(GDP)]
 ```
 
-We have loaded both csv files and merged them by using a join like command. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` entries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Life expectancy at birth is measure of how ling people people live on averahe in a specific country. GDP per capita stands for gross domestic product at purchasing power parity of a specific country, both at 2014 in our case. Finally we have divided GDP per capita by 1000 and took the log of it.
+We have loaded both csv files and merged them with inner join. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` entries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Life expectancy at birth is measure of how ling people people live on averahe in a specific country. GDP per capita stands for gross domestic product at purchasing power parity of a specific country, both at 2014 in our case. Finally we have divided GDP per capita by 1000 and took the log of it.
 
 #### Data Cleaning
-As the first step of data cleaining we have downloaded a csv file containing the list of `r n_country` countries in the world as of now. There were many entries in our data set that were no countries, so they were to be dropped.
+As the first step of data cleaining we have downloaded a csv file containing the list of `r n_country` countries in the world as of now. There were many entries in our data set that were not about countries but some aggregations, so they were dropped.
 We have aggregated lines in the data, that we have to remove as we only care about countries in the analysis.
 We do this cleaning in two steps: first we check entries where the "country" is not inlcuded in the list of downloaded countries.
-Then we manually check all of them, and collect those that are really not countries. (In the previous step some get classified as "non country" due to different writing in Data Bank and in the downloaded country list csv file). Once we have this collection of real non-countries, we remove all from the Data.
+Then we manually checked all of them, and collected those that are really not countries. (In the previous step some get classified as "non country" due to different writing in Data Bank and in the downloaded country list csv file). Once we had this collection of real non-countries, we removed all from the Data.
 
-The following entries have been dropped because of being marked as non-countries. After data cleaning we have `r Data[,.N]` countries to investigate.
-
-```{r Q1_Cleaning}
+```{r Q1_Cleaning, results='hide'}
+#there were countries where a country had different name in the original data and in the country list we have downloaded.
 SuspectedGarbage <- Data[!country %in% CountryList[,1]]
 Garbage <- SuspectedGarbage [ -c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),]
 #let's check that we put non-countries to garbage and we kept only countries
@@ -111,34 +101,43 @@ SuspectedGarbage [ c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,
 Data <- Data[!country %in% Garbage [,country]]
 ```
 
+The `r Garbage[,.N]` entries have been dropped because of being marked as non-countries. After data cleaning we have `r Data[,.N]` countries to investigate.
 
 Please find summary statistics of life variable below:
+
 ```{r Q1_LifeSummary}
 pander(summary(Data[,life]))
 ggplot (Data, aes(life)) + geom_histogram(binwidth = 1) + ggtitle(labs(title = "Q1. Histogram of life variable", x = "Life expectancy at birth [years]"))
-Data [life == Data [,min(life)],]
-Data [life == Data [,max(life)],]
 ```
 
-Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Central African Republic, `r max(Data$life)` and `r min(Data$life)` respectively. The difference between the minimum and maximum values is quite large. Mean is close to the median, but life expectancy variable does not have a symmetric distribution, it rather seems to be skewed to the left.
+```{r Q1_min_max_life_countries}
+pander(Data [life == Data [,min(life)] | life == Data [,max(life)],])
+```
 
-Please find summary statistics of GDP variable below:
+Life expactancy is the highest in Hong Kong SAR, China, and the lowest in the Central African Republic, `r round(max(Data$life),2)` and `r round(min(Data$life),2)` respectively. The difference between the minimum and maximum values is quite large. Mean is close to the median, but life expectancy variable does not have a symmetric distribution, it rather seems to be skewed to the left.
+
+Please find summary statistics of GDP per capita variable below:
+
 ```{r Q1_GDPSummary}
 pander(summary(Data[,GDP]))
 ggplot (Data, aes(GDP)) + geom_histogram ( binwidth=6) + ggtitle(labs(title = "Q1. Histogram of GDP variable", x = "GDP per capita [1000 USD]"))
-Data [GDP == Data [,min(GDP)],]
-Data [GDP == Data [,max(GDP)],]
 ```
 
-GDP follows a log normal like distribution with a long right tail, it is tipically a clear sign that we are better to take the logarithm of the variable. GDP is the highest in Macao SAR, China, and the lowest in the Central African Republic, `r max(Data$GDP)` and `r min(Data$GDP)` respectively. In this case the difference between the minimum and maximum value is very significant.
+Countries with minimuma and maximum GDP are the followings:
+```{r Q1_min_max_GDP_countries}
+pander(Data [GDP == Data [,min(GDP)] | GDP == Data [,max(GDP)],])
+```
+
+GDP follows a log normal like distribution with a long right tail, it is tipically a clear sign that we are better to take the logarithm of the variable. GDP is the highest in Macao SAR, China, and the lowest in the Central African Republic, `r round(max(Data$GDP),2)` and `r round(min(Data$GDP),2)` respectively. In this case the difference between the minimum and maximum value is very large.
 
 Please find summary statistics of logGDP variable below:
+
 ```{r Q1_logGDP}
 pander(summary(Data[,logGDP]))
 ggplot(Data, aes(logGDP)) + geom_histogram (binwidth=0.5) + ggtitle(labs(title = "Q1. Histogram of logGDP variable", x = "Log GDP per capita [1000 USD]"))
 ```
 
-The histogram of logGDP has a more symmetric distribution then the GDP variable. The spread is also big in this case.
+The histogram of logGDP per capita has a more symmetric distribution then the GDP per capita variable. The spread is also big in this case.
 
 ### <span style="color:blue"> Q2. Estimate a lowess regression of life expectancy on ln gdp per capita. Estimate a linear regression of life expectancy on GDP per capita that best captures the nonlinearity you found (life expectancy on a piecewise linear spline or a polynomial in the explanatory variable). Argue for your choice. Report the coefficient estimates as well as their confidence interval, interpret and visualize the results.
 </span>
@@ -146,6 +145,7 @@ The histogram of logGDP has a more symmetric distribution then the GDP variable.
 In the following sections we go deeper in understanding our data.
 
 First, let's have a look at the scatterplot with GDP per capita on the x axis and life expectancy at birth on the y axis.
+
 ```{r Q2_scatterplot_GDP}
 # Creating a scatterplot to have a quick look at the data we have:
 ggplot(Data, aes(x = GDP, y = life)) + geom_point() +
@@ -167,47 +167,52 @@ In this particular case we have log GDP per capita on the x axis and life expect
 ```{r Q2_lowessGraph}
 # Estimating a lowess non-parametric regression on the data set.
 reg_loess <- loess (life ~ logGDP, Data)
-summary (reg_loess)
 ggplot(data = Data, aes(x=logGDP, y=life)) +
   geom_point(size=1.5) +
   ggtitle ("Q2. Lowess regression") + labs(x="Log GDP per capita, PPP [USD]",y="Life expectancy at birth [years]") +
   geom_line(data=Data,aes(x=logGDP,y=predict(reg_loess)),colour="blue",size = 1)
+summary (reg_loess)
 ```
 
 We can see that the graph has a positive slope in general. At the right end of the curve it gets a little flatter, but remains still positive. So we can assumte that there is some sort of positive correlation between these two variables. A possible interpretation at this point can be that there is a general positive relationship between GDP per capita and life expectancy. The higher the GDP per capita is in a country, the longer the life expectancy is on average.
 
 #### Level - Log Linear Regression
-``` {r Q2_evLogRegression}
+``` {r Q2_LevLogRegression}
 reg_levlog <- lm(life ~ logGDP, data=Data)
-summary (reg_levlog)
+
 #ggplot (Data, aes (x=logGDP, y = life )) + geom_point (size = 1.5) + 
 #ggtitle("Q2. Level - Log linear regression") + labs(x = "Log GDP per capita [1000 USD]", y = "Life Expectancy [year]") + 
 #geom_smooth (method = "lm")
+
 ggplot (Data, aes (x=logGDP, y = life )) + geom_point (size = 1.5) + 
 ggtitle("Q2. Level - Log linear Regression") + labs(x = "Log GDP per capita [1000 USD]", y = "Life Expectancy [year]") + 
-geom_line(data=Data,aes(x=logGDP,y=predict(reg_levlog)),colour="blue",size = 1)
+geom_line(data=Data,aes(x=logGDP,y=predict(reg_levlog)),colour="blue",size = 1) + geom_smooth(method = 'lm')
+
+summary (reg_levlog)
 Data[,res_reg_levlog := residuals(reg_levlog)]
 ```
 
 We seem to have rather small residual errors and pretty good R-squared, 66.5%, confirming the relationship between logGDP and Life Expectancy.
-The intercept estimate is 58.9839, which is hard to interpret in real life for practical reasons, it means that in a country with 0 logGDP the life expectancy at birth would be approx. 59 years on average. The slope estimate is 5.4607 which means that life expectancy is 0.54607 years higher on average in countries with 10% higher GDP per capita. The slope estimate is significant at 0.1%, with other words, life expectancy and log GDP per capita are correlated at a 99.9 
+The intercept estimate is 58.98, which is hard to interpret in real life for practical reasons, it means that in a country with 0 logGDP the life expectancy at birth would be approx. 59 years on average. The slope estimate is 5.46, which means that life expectancy is 0.546 years higher on average in countries with 10% higher GDP per capita. The slope estimate is significant at 0.1%, with other words, life expectancy and log GDP per capita are correlated at a 99.9%.
 
-Equatorial Guinea has the greatest negative residual, the life expectancy is `r abs(min(residuals(reg_levlog)))` lower that one could expect based on the regression. The next two countries with greatest negative residuals are Nigeria and Swaziland, -15.9 and -14.3 years respectively. The highest positive residuals are Vietnam, Solomin Islands and Nicaragua, the residuals are over 7 years, meaning that people live more than 7 years longer on average, as one could expect based on the GDP per capita.
+Equatorial Guinea has the greatest negative residual, the life expectancy is `r round(abs(min(residuals(reg_levlog))),2)` lower that one could expect based on the regression. The next two countries with greatest negative residuals are Nigeria and Swaziland, -15.9 and -14.3 years respectively. The highest positive residuals are Vietnam, Solomin Islands and Nicaragua, the residuals are over 7 years, meaning that people live more than 7 years longer on average, as one could expect based on the GDP per capita.
 
 The residuals of the seven countries with highest GDP per capita are all negative, which is quite unexpected. This is something that we are going to consider when creating piecewise linear splines.
+
 
 #### Log - Log regression
 ``` {r Q2_Log-Log}
 # LOG-LOG REGRESSION
 reg_loglog <- lm(log(life) ~ logGDP, data=Data)
-summary(reg_loglog)
 ggplot(data = Data, aes(x=logGDP, y=log(life))) +  geom_point(size=1.5) +
   ggtitle ("Q2. Log-Log linear regression") +  
   labs(x="Log - GDP per capita, PPP [USD]", y="Log - Life expectancy at birth [years]") +
-  geom_line(data=Data,aes(x=logGDP,y=predict(reg_loglog)),colour="blue",size = 1)
+  geom_line(data=Data,aes(x=logGDP,y=predict(reg_loglog)),colour="blue",size = 1) + geom_smooth(method = 'lm')
+summary(reg_loglog)
 ```  
 
-R-squared is slightly lower than in the previous case, but it is not significant at all, but this regression is more difficult to interpret. It can be interpreted as life expectency is 0.078776% higher on average for observations with 1% higher GDP per capita. 
+R-squared is slightly lower than in the previous case, but it is not significant at all. Also, this regression is more difficult to interpret. It can be interpreted as life expectency is 0.078% higher on average for observations with 1% higher GDP per capita. 
+
 
 #### Lev - Lev regression
 
@@ -215,80 +220,123 @@ Though the scatterplots above suggested that the level - level linear correlatio
 ``` {r Q2_Lev-Lev}
 # LOG-LOG REGRESSION
 reg_levlev <- lm(life ~ GDP, data=Data)
-summary(reg_levlev)
 ggplot(data = Data, aes(x=GDP, y=life)) +  geom_point(size=1.5) +
   ggtitle ("Q2. Level - Level linear regression") +  
   labs(x="GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
-  geom_line(data=Data,aes(x=GDP,y=predict(reg_levlev)),colour="blue",size = 1)
+  geom_line(data=Data,aes(x=GDP,y=predict(reg_levlev)),colour="blue",size = 1) + geom_smooth(method = 'lm')
+summary(reg_levlev)
 ```  
 
 Both R-squared and the plot confirms our assumption that there are much better models that the simple level - level linear regression. This plot could obviously not capture the relationship as good as the previous ones.
 
+
 #### Level - Level Quadratic regression
-``` {r Q2_QuadraticRegression}
+
+``` {r Q2_Level-Level_QuadraticRegression}
 # Estimating a quadratic regression on GDP and life expectancy:
 Data[, GDP_sq := GDP^2]
-reg_quad <- lm(life ~ GDP + GDP_sq, data=Data)
-summary(reg_quad)
+reg_quad_levlev <- lm(life ~ GDP + GDP_sq, data=Data)
 
 ggplot(Data, aes(x=GDP, y=life)) +  geom_point(size=1.5) + 
   ggtitle ("Q2. Quadratic regression") +  
   labs(x="GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
-  geom_line(data=Data,aes(x=GDP,y=predict(reg_quad)),colour="blue",size = 1)
+  geom_line(data=Data,aes(x=GDP,y=predict(reg_quad_levlev)),colour="blue",size = 1)
+
+summary(reg_quad_levlev)
 ```
 
-R-squared is lower and residual error is higher than before, indicating that it might not be as good model as the previous one is. Frankly, probably there is nothing to justify that life expectancy would peek at `r round (0.58 / 2 / 0.0039)` kUSD GDP per capita, and very rich countries would suffer. The reasonably small error rate to this model is likely attributable to the fact that we have very few very rich countries (hence, small number of observations on this end.)
+R-squared is lower and residual error is higher than before, indicating that it might not be as good model as the previous one. Frankly, probably there is nothing to justify that life expectancy would peek at `r round (0.58 / 2 / 0.0039)` kUSD GDP per capita, and very rich countries would suffer. The reasonably small error rate to this model is likely attributable to the fact that we have very few very rich countries (hence, small number of observations on this end.)
+
+
+#### Level - Log Quadratic regression
+``` {r Q2_Level_Log_QuadraticRegression}
+# Estimating a quadratic regression on log GDP pre capita and life expectancy:
+Data[, logGDP_sq := logGDP^2]
+reg_quad_levlog <- lm(life ~ logGDP + logGDP_sq, data=Data)
+
+ggplot(Data, aes(x=logGDP, y=life)) +  geom_point(size=1.5) + 
+  ggtitle ("Q2. Quadratic regression") +  
+  labs(x="log GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=logGDP,y=predict(reg_quad_levlog)),colour="blue",size = 1)
+
+summary(reg_quad_levlog)
+```
+
 
 #### Level - Level Cubic Regression
-``` {r Q2_CubicRegression}
-Data[,GDP_cu := logGDP^3]
-reg_cub <- lm(life ~ GDP + GDP_sq + GDP_cu, data=Data)
-summary(reg_cub)
+``` {r Q2_Level_Level_CubicRegression}
+Data[,GDP_cu := GDP^3]
+reg_cub_levlev <- lm(life ~ GDP + GDP_sq + GDP_cu, data=Data)
 
 ggplot(data = Data, aes(x=GDP, y=life)) +
   geom_point(size=1.5) +
   ggtitle ("Q2. Cubic regression") +  
   labs(x="GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
-  geom_line(data=Data,aes(x=GDP,y=predict(reg_cub)),colour="blue",size = 1)
+  geom_line(data=Data,aes(x=GDP,y=predict(reg_cub_levlev)),colour="blue",size = 1)
+
+summary(reg_cub_levlev)
 ```
+
+
+#### Level - Log Cubic Regression
+``` {r Q2_Level_Log_CubicRegression}
+Data[,logGDP_cu := logGDP^3]
+reg_cub_levlog <- lm(life ~ logGDP + logGDP_sq + logGDP_cu, data=Data)
+
+ggplot(data = Data, aes(x=logGDP, y=life)) +
+  geom_point(size=1.5) +
+  ggtitle ("Q2. Cubic regression") +  
+  labs(x="log GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
+  geom_line(data=Data,aes(x=logGDP,y=predict(reg_cub_levlog)),colour="blue",size = 1)
+
+summary(reg_cub_levlog)
+```
+
 
 #### Piecewise Linear Spline
 
-In the lowess diagram we have seen that something slope is changing at about x = 4. In addition to that in when having a log level regression We have uncovered that the seven countries with highest GDP per capita all have negative residuals, in all countries the life expectancy was below the regression line. Considering these observations we select the knot accordingly and build the PLS model accordingly.
+In the lowess diagram we have seen that the slope is changing at about x = 4. This is confirmed by our finding at the log-level regression where we uncovered that the seven countries with highest GDP per capita all have negative residuals (i.e. in all these super-rich countries life expectancy was below the linear regression line). We selected the knot accordingly and build the PLS model.
 
 ``` {r Q2_PLS}
 
 # PIECEWISE LINEAR SPLINE IN LEVEL-LOG REGRESSION
 knots <- c(4)
 reg_PLS <- lm(life ~ lspline(logGDP,knots), data=Data)
-summary (reg_PLS)
+
 ggplot(data = Data, aes(x=logGDP, y=life)) +
   geom_point(size=1.5) +
   ggtitle ("Q2. Piecewise Linear Spline") +
   labs(x="Log GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
   geom_line(data=Data,aes(x=logGDP,y=predict(reg_PLS)),colour="blue",size = 1) +
-  geom_vline(xintercept =knots,colour="red") 
+  geom_vline(xintercept =knots,colour="red")
+
+summary (reg_PLS)
 ```
 
-The R-squared of the regression is 67.28%. It is bit higher than the R-squared of the level log regression. It is not surprising because with two lines with possibly two different slopes we have to provide at least as good fit as with one linear. The slope of the first linear is 5.6889, shows positive relation between log GDP per capita and life expectancy, and it is significant at 0.1%. A slope of 5.6889 means, that below approximately 54,600 USD (log GDP per capita = 4) the life expectancy is 0.56889 years higher on average for countries with 10% higher GDP erp capita. The second linear beyond log GDP per capita 4 has a negative slope and it has captured that we have observed when doing a lowess regression. The slope estimate is -1.6650, but it is not significant at even 10%. This second short linear provides a better fit for 9 countries, meaning that the life expectancy is 0.16650 years lower on average in countries with 10% higher GDP per capita.
+The R-squared of the regression is 67.28%. It is bit higher than the R-squared of the level log regression. It is not surprising because with two lines with possibly two different slopes we have to provide at least as good fit as with one linear. The slope of the first linear is 5.67, shows positive relation between log GDP per capita and life expectancy, and it is significant at 0.1%. A slope of 5.67 means, that below approximately 54,600 USD (log GDP per capita = 4) the life expectancy is 0.567 years higher on average for countries with 10% higher GDP erp capita. The second linear beyond log GDP per capita 4 has a negative slope and it has captured that we have observed when doing a lowess regression. The slope estimate is -1.66, but it is not significant at even 10%. This second short linear provides a better fit for 9 countries, meaning that the life expectancy is 0.166 years lower on average in countries with 10% higher GDP per capita.
+
 
 #### Choosing the best model and evaluating it
 
-After the investigation we can see that the level - log regression has best captured the relatiom between life expectancy and GDP per capita, with logarithm of GDP PPP as the explanatory variable.
+After the investigation we can see that the level - log regression has best captured the relation between life expectancy and GDP per capita, with logarithm of GDP PPP as the explanatory variable.
 
 ```{r Q2_Model selection}
 
 RSq <- data.table (c("Level - Log  :  ",
                      "Log - Log    :  ", 
                      "Level - Level:  ", 
-                     "Quadratic    :  ", 
-                     "Cubic        :  ", 
+                     "Quadratic Level - Level   :  ", 
+                     "Quadratic Level -Log",
+                     "Cubic Level - Level        :  ", 
+                     "Cubic Level - Log        :  ", 
                      "PLS (spline) :  "), 
                    c(summary(reg_levlog)$r.squared,
                      summary(reg_loglog)$r.squared,
                      summary(reg_levlev)$r.squared,
-                     summary(reg_quad)$r.squared,
-                     summary(reg_cub)$r.squared,
+                     summary(reg_quad_levlev)$r.squared,
+                     summary(reg_quad_levlog)$r.squared,
+                     summary(reg_cub_levlev)$r.squared,
+                     summary(reg_cub_levlog)$r.squared,
                      summary(reg_PLS)$r.squared
                      ))
 pander(RSq)
@@ -296,11 +344,10 @@ pander(RSq)
 
 Quadratic and cubic polynomial regression also captured that change in the slope for countries with the highest GDP per capita, but level - log regression and linear spline were the ones that best captured the variance in y.
 
-#### Coefficient calculations, confidence interval
-!!! Alább azt tételezem fel, hogy a level-log-t választottuk az előző paragrafusban
-!!! Ide is kell BLA-BLA
+``` {r Q2_Coefficients,for studying purposes, results='hide'}
+# Coefficient calculations, confidence interval
+# for studying purposes we were computing it by hand as well
 
-``` {r Q2_Coefficients}
 ### x = logGDP, y = life
 
 ## easy way:
@@ -324,13 +371,8 @@ sdResidErr3
 Conf95 <- c(Beta_estimate - 1.96 * sdResidErr1 / Data [,sd(logGDP)]  / (nrow (Data)-1) ^0.5, Beta_estimate + 1.96 * sdResidErr1 / Data [,sd(logGDP)]  / (nrow (Data) -1) ^0.5)
 Conf95
 
+# Coefficients and Confidence interval at 95% have been calculated with built-in R functions as well as with statistical formulas. It is worth noting that Alpha and Beta estimates are the same that we got earlier, and examined when printed the summary of reg_levlog model.
 ```
-
-Coefficients and Confidence interval at 95% have been calculated with in built R functions as well as with statistical formulas.
-!!! BLA-BLA
-
-
-!!! BLA-BLA: worth noting that Alpha and Beta estimates are the same that we got earlier, and examined when printed the summary of reg_levlog model.
 
 
 ### <span style="color:blue"> 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
@@ -338,7 +380,7 @@ Coefficients and Confidence interval at 95% have been calculated with in built R
 
 In order to do it, first we need to enhance our data with population. For that we downloaded 2014 population data form the same "World Development Indicators" website.
 
-``` {r Q3_Population}
+``` {r Q3_Population, results='hide'}
 ## Download and clean population data
 PopData <- fread ('Population_2014.csv')
 str (PopData)
@@ -363,27 +405,25 @@ Data2 [country == "United States",]
 
 ``` {r Q3_weighted model}
 reg_weight<- lm (life ~ logGDP, weight = Population, data = Data2)
-summary (reg_weight)
+
 ggplot (Data2, aes (x = logGDP, y = life, size = Population)) + 
   geom_point(shape = 21, fill = "#009E73", alpha = 0.5, show.legend = FALSE) + 
   scale_size_continuous(range = c(1, 15)) +
   ggtitle ("Q3. Weighted Lev-Log Regression") +
   labs(x="Log GDP per capita, PPP [USD]", y="Life expectancy at birth [years]") +
   geom_line(data=Data,aes(x=logGDP,y=predict(reg_weight)),colour="blue",size = 1)
-  
+
+summary (reg_weight)
 ```
 
-When doing a level-log regression without considering the population, the slope estimate was 5.4607, it is now 5.8169, slightly higher. China and India have the highest population in the world and they are very close to the regression line and are approximately in the middle of the log GDP per capita sitribution, they don't alter the slope significantly. We can say that after considering the population as weight, life expectancy is 0.58169 years higher on average in countries with 10% higher GDP per capita.
+When doing a level-log regression without considering the population, the slope estimate was 5.46. It is now 5.82, slightly higher. China and India have the highest population in the world and they are very close to the regression line and are approximately in the middle of the log GDP per capita distribution, hence they don't alter the slope significantly. We can say that after considering the population as weight, life expectancy is 0.582 years higher on average in countries with 10% higher GDP per capita.
+
 
 ##<span style="color:blue"> Problem 2.2
 
 Download hotels_all_nov21.csv. Pick a city. Consider hotels and hostels. Consider all with at least 2 stars. You have 6 tasks (1p each). 
 The goal of the exercise is to use information you have in your data to find a shortlist of five hotels and/or hostels that are good candidates for a good deal. You have to estimate a regression of prices (or log prices) on the other variables of your choice. You have to document your analysis and print the shortlist. 
 </span>
-
-First we load the file, then pick up a city randomly (happens to be Athens). Then filters to 'Hostel' and 'Hotel' types with minimum 2 stars. We then do some data cleaning, such as:
-- dropping those few that miss parameters that we might be interested in,
-- remove two duplicates.
 
 ``` {r Q22_basic}
 #### Data Loading
@@ -423,8 +463,8 @@ myhotels [,.(address, .N), by = name][N>1,]
 myhotels [name %in% c("Athens Lotus Hotel", "Metropolitan Hotel")]
 myhotels1 <- myhotels[!duplicated(myhotels[,id]),]
 ```
-We assumed that 'distance' is the distance from the city center
 
+We assumed that 'distance' is the distance from the city center
 
 Next step is to filter extreme values.
 - remove those that are considered to be outside of Athens (apparently all those that are further away than the hotel with the highest distance in Piraeuswhich means that we conside everything that is further away then Piraeus as suburb not Athens).
@@ -442,7 +482,32 @@ myhotels3 <- myhotels2 [, .(distance, stars, badge_excellence, rating, rating_re
 </span>
 
 !!! I guess these are distance, stars, rating, badge_excellence, rating_reviewcount, price
-!!!BLA-BLA-BLA
+!!!BLA-BLA-BL
+
+Now we need to describe all the variables we have. Let's have a scatterplot first with distance on the x axis and price on the y axis.
+
+```{r Q22_statistics_of_variables}
+ggplot(myhotels1, aes(x=distance, y=price)) + geom_point(shape = 1) + ggtitle(labs(title = "Q2. Scatterplot of price on distance", x = "Distance from the city center [km]", y = "Price [EUR]"))
+
+# SUMMARY STATISTICS ON PRICE
+qplot(myhotels1[,price], geom="histogram", binwidth=20) + theme_bw() + ggtitle(labs(title = "Q2. Histogram of price variable", x = "Price [EUR]"))
+price_stat<-myhotels1[,.(mean_price = mean(price) , sd_price = sd(price), 
+                      min_price = min(price) , max_price = max(price), 
+                      p50=quantile(price,.50), p95=quantile(price,.95), n=.N )]
+pander(price_stat)
+```
+
+BLA BLA
+
+```{r}
+# SUMMARY STATISTICS ON DISTANCE
+qplot(myhotels1[,distance], geom="histogram", binwidth=0.4) + theme_bw() + ggtitle(labs(title = "Q2. Histogram of distance variable", x = "Distance from the city center [km]"))
+
+distance_stat <-myhotels1[,.(mean_dist = mean(distance) , sd_dist = sd(distance),
+                          min_dist = min(distance) , max_dist = max(distance),
+                          p50 = quantile(distance,.50), p95 = quantile(distance,.95), n=.N )]
+pander(distance_stat)
+```
 
 ### <span style="color:blue"> 2.2.2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
 
@@ -454,9 +519,9 @@ cubic
 
 ``` {r Q2_nonlinears}
 ### Creating binary variables out of of badge_excellence
-myhotels3 [, Gold := (badge_excellence == "Gold Award 2017") + 1]
-myhotels3 [, Loved := (badge_excellence == "Loved by guests") + 1]
-myhotels3 [, Top := (badge_excellence == "Top Hotel") + 1]
+myhotels3 [, Gold := (badge_excellence == "Gold Award 2017") + 0.1]
+myhotels3 [, Loved := (badge_excellence == "Loved by guests") + 0.1]
+myhotels3 [, Top := (badge_excellence == "Top Hotel") + 0.1]
 
 ### Function to create R-square for 4 models
 R2s <- function(x ,y){
@@ -483,6 +548,9 @@ R2Table <- data.table (c("lev - lev lin", "lev - log", "Quadratic", "Qubic"),
 names(R2Table) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
 R2Table
 
+```
+
+#### itt átváltható az Imre által használt  myhotel3 a hotel9 névre, de Imre kihagyta a hotel nevét az ő táblájából.
 ```
 
 3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
