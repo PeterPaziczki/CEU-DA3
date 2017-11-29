@@ -6,7 +6,6 @@ author:
 - name: Balazs Zankay
 date: "2017 november 28"
 output:
-  pdf_document: default
   html_document: default
   word_document: default
 ---
@@ -521,7 +520,7 @@ First we have loaded the file and picked a city randomly (happened to be Athens)
 max_in <- myhotels1 [city_actual == "Piraeus", max (distance)]
 myhotels2 <- myhotels1[distance <= max_in, ]
 myhotels2 [price >200,]  #checking who the very expensive ones are. After analyzing on web, we found tht these all are "normal" high priced hotels, we keep those.
-myhotels3 <- myhotels2 [, .(distance, stars, badge_excellence, rating, rating_reviewcount, price)] #remove not needed data
+myhotels3 <- myhotels2 [, .(name, distance, stars, badge_excellence, rating, rating_reviewcount, price)] #remove not needed data
 ```
 
 Next step was to filter extreme values, a few hotels have been removed because being considered to be outside of Athens (apparently all those that are further away than the hotel with the highest distance in Piraeuswhich means that we conside everything that is further away then Piraeus as suburb not Athens). It is important to mention that we did not drop any hotel due to high price.
@@ -704,7 +703,7 @@ summary (multireg)
 summary (multireg1)
 ```
 
-R saquare seems to be fairly OK? much better compared to any simple regression of any shape.
+R saquare seems to be fairly OK, much better compared to any simple regression of any shape.
 
 Looking at the coefficients we can see that some add little and close to zero, so let us see what happens to R square if we drop those variables and simplify the model.
 We drop: distance_2, distance_3, Gold, Loved.
@@ -802,22 +801,15 @@ Positive correlation, slope estimated +0.75.The t(p) value is close to zero here
 
 The strategy to find the best deal is to find offers that have the largest negative residuals. The regression line tells us what would be the price on average. The greater the residual is in a negative sense, the better deal we find.
 
-To do this we have to filter on variables of personal interest. We chose distance, stars and rating. We would like to stay in a 3 km range of city center in a 3 or more star hotel with a rating minimum of 4.1 (median). 
-
-```{r Q224_strategy}
-myhotels_Q5 <-myhotels2[accommodation_type=="Hotel"][stars>=3][rating>=4.1] #### itt hotel 8 helyett myhotels2 Imre verziója
-summary(myhotels_Q5)
-hotelresid <- lm(price ~ distance + rating + stars, data=myhotels_Q5)
-resid(hotelresid)
-# hotelresid[, l
-```
 
 ### <span style="color:blue"> 6. List the hotels with the smallest (most negative) residuals. List their prices and other characteristics as well. Comment on the results. 
 
-Problem 2.3
+The 3 best deal hotels are in the below table.
 
-- Pick another city.
+```{r Q224_strategy}
+myhotels3 [, res := residuals (multireg2)]
+myhotels3 [,][order((residuals(multireg2)))][c(1,2,3),]
+```
 
-- Estimate the model of your choice in the previous exercise (ie the exact same dependent variables, same functional form) for another city of your choice. Discuss your finding.
 
 test
