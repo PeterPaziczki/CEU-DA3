@@ -3,8 +3,8 @@ title: "DA3_3_paziczki_peter_161117"
 author: "Peter Paziczki"
 date: "2017 november 16"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 <style>
@@ -81,9 +81,14 @@ coeftest(lpm1, vcov=sandwich)
 coeftest(lpm2, vcov=sandwich)
 ```
 
-```{r stargazer}
+```{r stargazer, results='asis'}
 stargazer(list(lpm1), digits=3, out="sports_mortality_1.html")
 stargazer(list(lpm1, lpm2), digits=3, out="sports_mortality_2.html")
+```
+
+```{r shiny}
+shiny::includeHTML('./sports_mortality_1.html')
+shiny::includeHTML('./sports_mortality_2.html')
 ```
 
 ```{r}
@@ -102,7 +107,7 @@ ggplot(data = share, aes(x=sports, y=deceased)) +
 
 * Use the SHARE data file mortality_oldage_eu.csv 
 
-* Filter data: Keep respondents between 50 and 80 years of age. The variables you will need are whether the person deceased within 6 years of the interview (“deceased”), gender (“female”), age (“age”), years of education (“eduyears_mod”), income group within country (“income10g), and the explanatory variables of your focus, physical activities (variable “sports”: 1: more than once a week, 2: once a week, 3: one to three times a month, 4: hardly ever, or never).
+* Filter data: Keep respondents between 50 and 80 years of age. The variables you will need are whether the person deceased within 6 years of the interview (?deceased?), gender (?female?), age (?age?), years of education (?eduyears_mod?), income group within country (?income10g), and the explanatory variables of your focus, physical activities (variable ?sports?: 1: more than once a week, 2: once a week, 3: one to three times a month, 4: hardly ever, or never).
 </span>
 
 
