@@ -1,0 +1,383 @@
+---
+title: "DA3_3_paziczki_peter_161117"
+author: "Peter Paziczki"
+date: "2017 november 16"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include=FALSE, echo=FALSE, warning=FALSE}
+# Clearing memory
+rm(list=ls())
+
+# Setting global options
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r initial_settings}
+# Loading necessary libraries
+library(ggplot2)
+library(data.table)
+library(descr) # for the freq function
+library(fBasics) # for basicStats function
+library(lmtest) # for coeftest
+library(sandwich)
+library(stargazer)
+library(descr)
+library(pander)
+library(mfx)
+
+# Setting presentation parameters
+theme_update(plot.title = element_text(hjust = 0.5, size = 12))
+
+# Checking and setting working directory
+getwd()
+setwd('/Users/User/Documents/R_projects/CEU-DA3')
+
+options(digits=2)
+```
+
+# DA3 Assignment #3
+
+### <span style="color:blue"> 1. In this exercise you have to use SHARE data and analyze the pattern of mortality rate with respect to physical activities, in an analysis similar to lecture 5
+
+* Use the SHARE data file mortality_oldage_eu.csv 
+
+* Filter data: Keep respondents between 50 and 80 years of age. The variables you will need are whether the person deceased within 6 years of the interview (?deceased?), gender (?female?), age (?age?), years of education (?eduyears_mod?), income group within country (?income10g), and the explanatory variables of your focus, physical activities (variable ?sports?: 1: more than once a week, 2: once a week, 3: one to three times a month, 4: hardly ever, or never).
+</span>
+
+```{r Q1_loading_data, results='hide'}
+# Reading input files
+share_raw <- read.csv("mortality_oldage_eu.csv", na.strings = ".")
+share <- subset(share_raw, age>=50 & age<=80)
+share <- subset(share, deceased!="." & female!="." & age!="." & eduyears_mod!="." & income10g!="." & sports!=".")
+
+# Making it a data.table object
+share <- data.table(share)
+
+# Dropping the unnecessary columns, keeping only deceased, female, age, eduyears, income10g and sports.
+# In exercise 4 we are asked to investigate other variables, so I keep other variables in the data set.
+share <- share[,c('deceased', 'female', 'age', 'eduyears_mod', 'income10g', 'sports')]
+
+# share <- share[,c('deceased', 'female', 'age', 'eduyears_mod', 'income10g', 'sports', 'drinks_never', 'drinks_everyday')]
+```
+
+SHARE (Survey of Health, Ageing and Retirement in Europe) data has been loaded from the csv file we have been provided (mortality_oldage_eu.csv). It is a multidisciplinary and cross-sectional database of individuals on health, economic status, etc. Individuals have been interviewed in 2007 and the same individuals six years later, in 2013 (if they were alive). The data set covers 12 European countries with ```r nrow(share_raw)``` individuals asked. The dara set has ```r ncol(share_raw)``` variables, but according to the excercise I am going to consider 6 variables. All the observation where even one of the variables had a missing value, those have been dropped, in addition to that, age has been limited to the range of 50 to 80, observations outside of this range have been dropped. By these means we now have ```r nrow(share)``` observation to investigate.
+
+Summary statistics of variables considered
+
+I would like to briefly summarize the basic informationa and statistics of all variables and to support that I have created a table containing the basic statistics, such as minimum and maximum values, mean, median, quartiles, standard deviation, skewness, and a few others, that are not subject of this assignment.
+
+Variable *deceased*
+
+It is a binary variable, which can take the value of 1 if the interviewee is deceased in the year of 2013, takes 0 otherwise. In our data set ```r mean(share$deceased)*100```% of the individuals passed away by 2013.
+
+Variable *female*
+
+It is also a binary variables, takes the value of 1 in case of the interviewee being female and takes 0 otherwise. ```r mean(share$female)*100```% of interviewees are female in our data set.
+
+Variable *age*
+
+The age variable represents the age of the interviewee in 2007, which We have limited to 50 to 80. The average is ```r mean(share$age)``` in the data set. Age is given in years rounded to one digit (considering months).
+
+Variable *eduyears_mod*
+
+This variable represents the years of education the individual had. Its range is 0 to 20 and has a normal-like distribution, the mean is ```r mean(share$eduyears_mod)```.
+
+Variable *income10g*
+
+This variable represents the household income, having 10 equal-sized groups within each of the 12 country, it is basically a categorical, numerical variable with a range of 1-10.
+
+Variable *sports*
+
+This particular variable represents teh frequency of sports or activities that are done vigorous by the individual asked. This categorical, numerical variable can take the values 1 to 4,
+
+* 1 means doing sports more than once a week,
+
+* 2 means doing sports once a week,
+
+* 3 means doing sports one to three times a month and
+
+* 4 means doing sports hardly ever, or never.
+
+Please find some summary statistics of the variables introduced above.
+
+```{r Q1_basic_statistics}
+# Basic statistics of variables
+# pander(basicStats(share[,1:6]))
+pander(summary(share))
+
+# Histogram of age variable
+# ggplot(share, aes(age)) + geom_histogram()
+# ggplot(share, aes(eduyears_mod)) + geom_histogram()
+# ggplot(share, aes(income10g)) + geom_histogram()
+# ggplot(share, aes(sports)) + geom_histogram()
+```
+
+### <span style="color:blue"> 2. Do exploratoty analysis: Create binary variables from the sports variable. Describe these variables in your dataset. Drop observations that have missing value for either.
+
+I have briefly described the variable above, now having a deeper analysis, please find a frequency table below of the *sports* variable not considering the *deceased* variable. In our data set ```r mean(share$deceased)*100```% of the individuals passed away by 2013. In the year of 2007, 7961 interviewee reported that they did sports more than once a week, 3228 individuals reported that they did sports once a week, we have 2209 records saying they did sports one to three times a months and 8450 peopel reported they did sports hardly ever or never.
+
+```{r Q2_frequency_table}
+# Frequency tables, deceased = died 
+# freq(share$deceased)
+freq(share$sports)
+```
+
+
+Please find the cross table below, already considering the *deceased* variable, and some description of these variables.
+
+* 62.74% of people who are alive in 2013, did sports at least one to three times a month, but a very high proportion, 37.26% did not do sports regularly. 
+* 38.07% of people who are already passed away, did sport at least one to three times a month, and a higher proportion, 61.93% of them did not do sports regularly.
+* People who did sport hadrly ever or never, 90.82% of them was alive in 2013.
+* People who did sport at least one to three times a month or more frequent, `r (7700+3123+2098)/(7700+3123+2098+261+105+111)*100`% of them were alive in 2013.
+* The difference in mortality rate is difference of the two above mentioned values, the difference is `r (7700+3123+2098)/(7700+3123+2098+261+105+111)*100-90.82` percentage points between who did sports at least one to three times a months and those who hardly ever or neved did sports.
+
+```{r Q1_crosstable}
+pander(CrossTable(share$deceased, share$sports))
+```
+
+#### Creating binary variables of *sports* variable
+
+The easiest way to work with binary variables if they are 0 or 1, so I have created 4 binary variables, *sports_1, sports_2, sports_3, sports_4*, they can take the values of 0 or 1. Each of these values indicates whether the individual falled into that category, 1 is taken if yes, 0 otherwise. I have created the below table for making interpretation easier, it shows the extent of people being alived or deceased in each *sports* category.
+
+Deceased variable / Sports variable | sprots_1 | sports_2 | sports_3 | sports_4
+------------- | ------------- | ------------- | ------------- | -------------
+alive in 2013 | 96.72% | 96.75% | 94.98% | 90.82%
+passed away by 2013 | 3.28%  | 3.25% | 5.02% | 9.18%
+
+```{r Q2_binary_variables, results='hide'}
+# The sports variables is a categorical variables on its own, but to be able to work with, binary variables have to be created from this categorical variable.
+
+# Creating binary variables
+share$sports_1 <- as.numeric(share$sports == 1)
+share$sports_2 <- as.numeric(share$sports == 2)
+share$sports_3 <- as.numeric(share$sports == 3)
+share$sports_4 <- as.numeric(share$sports == 4)
+
+# Summary statistics of sports binary variables
+# summary(share$sports_1, digits = 2)
+# summary(share$sports_2, digits = 2)
+# summary(share$sports_3, digits = 2)
+# summary(share$sports_4, digits = 2)
+# summary(c(share$sports_1,share$sports_2,share$sports_3), digits = 2)
+# table(share$sports_1, share$sports_2, share$sports_3, share$sports_4)
+```
+
+### <span style="color:blue"> 3. Estimate a linear probability model (LPM) of mortality on sports. Report and interpret the results.
+
+A linear probability model with mortality as the dependent variable and *sports_1, sports_2, sports_3, sports_4* as explanatory variables will show us the differences in mortality rate depending on the frequency of doing sports. In this linear probability model our reference category is *sSports_4* (doing sports hardly ever, never).
+
+```{r Q3_LPM_model}
+# LPM: linear probability model
+lpm1 <- lm(deceased ~ sports_1 + sports_2 + sports_3, data=share)
+
+# lpm2 <- lm(deceased ~ drinks_never + drinks_everyday, data=share)
+
+coeftest(lpm1, vcov=sandwich)
+# coeftest(lpm2, vcov=sandwich)
+```
+
+The coefficients are significant at 0.1%, meaning that we can be 99.9% confident that these coefficients are not zero in our data set. The intercept means that 9.18% of poeple who did sports hardly ever or never were deceased by 2013. Those who reported doing sports more than once a week had a 5.9 percentage points lower probability of being deceased within the 6 years between 2007 and 2013. The same applies to those who fell in sports_2 category, they had a 5.9 percentage points lower probability of being deceased within 6 years. Those reported to do sports one to three times a month had a 4.2 percentage points lower probability of passing away within that 6 years.
+
+The following plot was created by the stargazer package, it does tell that same values as the coeftest function above, with some additional information and some differences. R-squared means, how much of the variance in the dependent variable was captured by the regression, but in case of probability models **we don't interpret R-squared**. The difference that I wanted to highlight is that according to stargazer the coefficients are significant at 1%, while coeftest function reported them being significant at 0.1%.
+
+```{r Q3_stargazer_LPM1, results='asis'}
+stargazer(list(lpm1), digits=3, out="sports_mortality_1.html")
+# stargazer(list(lpm1, lpm2), digits=3, out="sports_mortality_2.html")
+```
+
+```{r Q3_shiny_LPM1}
+shiny::includeHTML('./sports_mortality_1.html')
+# shiny::includeHTML('./sports_mortality_2.html')
+```
+
+The following scatterplot has a regression line plotted on it, showing that the *deceased* variable can take only two values, 0 and 1, and the *sports* variable can take the already described for values, 1 to 4. The regression line seems to be flat, but if we compared the probabilities of being deceased for sports_1 and sports_4 to each other, we would see that 5.9 percentage points are a 64% difference.
+
+```{r Q3_scatterplot}
+# scatterplot and regression line with all sports binary variables
+ggplot(data = share, aes(x=sports, y=deceased)) +
+  geom_point(colour="orange") +
+  geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Q3 Scatterplot with a regression line", x = "sports categorical variable", y = "mortality rate"))
+```
+
+The following chart shows the same regression line, but not showing the whole range of *deceased* variable. On this chart is is easier to read the coefficient that we have already discussed above.
+
+```{r Q3_regression_line}
+# only  regression line with smoking
+ggplot(data = share, aes(x=sports, y=deceased)) +
+  geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Q3 Regression line", x = "sports categorical variable", y = "mortality rate"))
+```
+
+### <span style="color:blue"> 4. If you are interested in the causal effect of doing sports on mortality, would you want to control for some of the other variables in the dataset to get closer to the causal effect you are after? Would that controlling get you the causal effect you are after? 
+
+If we were interested in the causal effect, it would not be enough just to investigate the frequency of doing sport. To investigate the possible causal effects of doing sports is quite difficult, if not inpossible. If one were looking for a causal effect, in theory all the other variables that might influence the outcome of our investigation, should be controlled. It is called ceteris paribus, which a theoretical therm for economists to say that all the variables are held constant, except the one under investigation.
+
+So the possible way to get closer to causal effect is to control for reasonable variables, confounders, that we have data about. We have information about age, gender, income and number of years spent in education by countries. These would be the variables that I would consider as possible confounders, assuming that these variables might influence the possible effect of doing sports.
+
+### <span style="color:blue"> 5. Control for those variables in another LPM, interpret its results on sports, and compare those to the previous regression estimates. Discuss the differences and similarities.
+
+omitted  variable bias
+ha a causal effect árdekel, akkor nem r squared kell, hanem nincs benne egy változó, ami összefüggnek az xszel és ynal
+pl nők miért keresnek kevesebbet
+nemek közötti különségre egy csdomó minden hatással van, ami nem a nemmek van összefüggésben
+
+sport példa esetén a túlsúly és a sportolás korrelálhat, így az egyiknek a szignifikaiája változhat
+
+használhatok több változót is, sok megfigyelés van ...
+
+I am going to run LPM regressions with mortality rate as dependent variable, controlling for *sports_1, sports_2, sports_3, sports_4* variables, and controlling for the other demographic variables mentioned, one LPM regression with each.
+
+#### Checking *age* as a confounder
+
+By regressing a non-parametric, a linear, a quadtratic and a cubic LPM regression on *age* we can see that the cubic regression is very close to the non-parametric regression, it provides a good fit. By eyeballing we can see a general positive relationship, so we can say that on average, the older an individual, the higher the probability of passing away within 6 years.
+
+```{r Q5_LPM_age_loess, results='asis'}
+# HANDLING CONFOUNDERS IN LPM to validate our estimation
+
+# Functional for age
+# watch out: loess takes a lot of time to run
+ggplot(data = share, aes(x=age, y=deceased)) +
+  geom_smooth(method="loess", aes(colour="loess")) +
+  geom_smooth(method="lm", aes(colour="linear")) +
+  geom_smooth(method="lm", formula=y~poly(x,2), aes(colour="quadratic")) +
+  geom_smooth(method="lm", formula=y~poly(x,3), aes(colour="cubic")) +
+  ggtitle(labs(title = "Q4 LPM for age variable", x = "age variable [years]", y = "mortality rate")) +
+  scale_colour_manual(name="Legend",values=c("#66CC00","#00BFC4","#F8766D", "black"))
+
+# same without loess
+ggplot(data = share, aes(x=age, y=deceased)) +
+  geom_smooth(method="lm", aes(colour="linear")) +
+  geom_smooth(method="lm", formula=y~poly(x,2), aes(colour="quadratic")) +
+  geom_smooth(method="lm", formula=y~poly(x,3), aes(colour="cubic")) +
+  scale_colour_manual(name="Legend",values=c("#00BFC4","#F8766D", "black"))
+```
+
+```{r Q5_LPM_age_non-parametric}
+# alternative nonparametric: fraction deceased by single years of age
+# first create single years of age
+share$agey <- round(share$age)
+byage <- aggregate(share$deceased, list(agey=share$agey), mean)
+ggplot(data = share, aes(x=age, y=deceased)) +
+  geom_line(data = byage, aes(x=agey, y=x, colour="non_parametric"), size=3) +
+  geom_smooth(method="lm", aes(colour="linear")) +
+  geom_smooth(method="lm", formula=y~poly(x,2), aes(colour="quadratic")) +
+  geom_smooth(method="lm", formula=y~poly(x,3), aes(colour="cubic")) +
+  scale_colour_manual(name="Legend",values=c("#00BFC4","#F8766D", "black", "green")) +
+  ggtitle(labs(title = "Q4 LPM for age variable", x = "age variable [years]", y = "mortality rate"))
+```
+
+#### Checking *eduyears_mod* as a confounder
+
+By regressing a non-parametric, a linear, a quadtratic and a cubic LPM regression on *eduyears_mod* we can see that the cubic regression is very close to the non-parametric regression, it provides a good fit. As we can see the regression has different segments. In the range of 3 to 17 years spent in education we can see a general negative relationship, we can say, that on average the more years spent in education, the lower the probability of passing away within 6 years. Considering those who spent less than 3 or more than 17-18 years in education we can say that on average, the more years spent in average, the higher the probability is of passing away in 6 years. One side note could be thta considering those who spent less than 3 years in education might be irrelevant.
+
+```{r Q5_LPM_education_loess, results='asis'}
+# Functional for for education
+# watch out: loess takes a lot of time to run
+ggplot(data = share, aes(x=eduyears_mod, y=deceased)) +
+  geom_smooth(method="loess", aes(colour="loess")) +
+  geom_smooth(method="lm", aes(colour="linear")) +
+  geom_smooth(method="lm", formula=y~poly(x,2), aes(colour="quadratic")) +
+  geom_smooth(method="lm", formula=y~poly(x,3), aes(colour="cubic")) +
+  scale_colour_manual(name="Legend",values=c("#00BFC4","#F8766D", "black", "green"))
+
+# same without loess
+ggplot(data = share, aes(x=eduyears_mod, y=deceased)) +
+  geom_smooth(method="lm", colour="orange") +
+  geom_smooth(method="lm", formula=y~poly(x,3), colour="navy")
+```
+
+```{r Q5_LPM_education_non-parametric}
+# alternative nonparametric: fraction deceased by single years of education
+byedu <- aggregate(share$deceased, list(edy=share$eduyears_mod), mean)
+ggplot(data = share, aes(x=eduyears_mod, y=deceased)) +
+  geom_line(data = byedu, aes(x=edy, y=x, colour="non-parametric"), size=3) +
+  geom_smooth(method="lm", aes(colour="linear")) +
+  geom_smooth(method="lm", formula=y~poly(x,2), aes(colour="quadratic")) +
+  geom_smooth(method="lm", formula=y~poly(x,3), aes(colour="cubic")) +
+  ggtitle(labs(title = "Q4 LPM for education variable", x = "years spent in education [years]", y = "mortality rate"))
+  scale_colour_manual(name="Legend",values=c("#00BFC4","#F8766D", "black", "green"))
+```
+
+#### Checking *income10g* as a confounder
+
+By regressing a non-parametric, a linear, a quadtratic and a cubic LPM regression on *income10g* categorical variable. We can see that the cubic regression is very close to the non-parametric regression, it is well fitted. Those who fall in income categories of 3 to 9, we can see a general negative relationship, on average the higher the household income is, the lower the probability of passing away within 6 years. Those who fell in the frist two or last category, the relation is the opposite, the higher the income is, the higher the probability of being deceased in 6 years, on average.
+
+```{r Q5_LPM_for_income_loess, results='asis'}
+# Functional for for income group
+# watch out: loess takes a lot of time to run
+ggplot(data = share, aes(x=income10g, y=deceased)) +
+  geom_smooth(method="loess", colour="black") +
+  geom_smooth(method="lm", colour="orange") +
+  geom_smooth(method="lm", formula=y~poly(x,3), colour="navy") 
+# same without loess
+ggplot(data = share, aes(x=income10g, y=deceased)) +
+  geom_smooth(method="lm", colour="orange") +
+  geom_smooth(method="lm", formula=y~poly(x,3), colour="navy")
+```
+
+```{r Q5_LPM_for_income_non-parametric}
+# alternative nonparametric:  fraction deceased by 10 income groups
+byinc <- aggregate(share$deceased, list(inc=share$income10g), mean)
+ggplot(data = share, aes(x=income10g, y=deceased)) +
+  geom_line(data = byinc, aes(x=inc, y=x, colour="non-parametric"), size=3) +
+  geom_smooth(method="lm", aes(colour="linear")) +
+  geom_smooth(method="lm", formula=y~poly(x,2), aes(colour="quadratic")) +
+  geom_smooth(method="lm", formula=y~poly(x,3), aes(colour="cubic")) +
+  ggtitle(labs(title = "Q4 LPM for income variable", x = "income variable", y = "mortality rate")) +
+  scale_colour_manual(name="Legend",values=c("#00BFC4","#F8766D", "black", "green"))
+```
+
+
+
+```{r Q5_LPM_model}
+lpm4 <- lm(deceased ~ sports_1 +sports_2 + sports_3 + female + age + eduyears_mod + income10g, data=share)
+lpm5 <- lm(deceased ~ sports_1 +sports_2 + sports_3 + female + poly(age,3) + poly(eduyears_mod,3) + poly(income10g,3), data=share)
+coeftest(lpm4, vcov=sandwich) # with linear models: we have a higher estimate for smokers, for ever smokers it is now lower, but still significant
+# 1.7 percentage points higher prob if you ever smoked; 3.7 percentage points higher prob of dying for who currently smokes compared to those
+# who never smoked (2.1+1.6 adding ever_smoed and smokes)
+coeftest(lpm5, vcov=sandwich) # including polinomial components does not make any difference in the smokes and ever_smoked estimates
+
+stargazer(list(lpm1, lpm4, lpm5), digits=3, type="html",out="smoking_mortality_2.doc")
+```
+
+### <span style="color:blue"> 6. Re-do exercises 3 & 5 using logit. Calculate and interpret the marginal differences of the sports variables. Discuss the differences and similarities to the LPM results. 
+
+```{r}
+# PROBIT & LOGIT
+
+logitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, family='binomial')
+# glm function for generalization, family binomial - it means exponential function will be used
+logitmarg <- logitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, atmean=FALSE)
+# logitmfx - computing marginal effect
+summary(logitcoeffs) # don't interpret these coefficients
+print(logitmarg) # marginal effects - on average in my sample what is the marginal effect of a small increase in my explinatory variable
+# it is about the marginal change on average; all the other variables kept fix, the avg marginal effect of unit increase is this much ...
+# logit estimates something similat to what the simple linear regression model estimates
+# if i want to do prediction, probit and logit performs better
+
+probitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, family='gaussian')
+probitmarg <- probitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, atmean=FALSE)
+summary(probitcoeffs)
+print(probitmarg)
+
+stargazer(list(lpm4, logitcoeffs, probitcoeffs), digits=3, type="html", out="smoking_mortality_3.doc")
+
+share$pred_lpm <- predict.lm(lpm4)
+share$pred_logit <- predict.glm(logitcoeffs, type="response")
+
+ggplot(data = share, aes(x=pred_logit, y=pred_lpm)) +
+  geom_line(aes(x=pred_logit, y=pred_logit), colour="orange") +
+  geom_point()
+# comparing the prediction of logit (x axis) to the linear model (y axis)
+# orange is just a 45 degree line to help interpretation
+  
+```

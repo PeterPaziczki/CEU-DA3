@@ -4,10 +4,9 @@ author:
 - name: Peter Paziczki
 - name: Imre Boda
 - name: Balazs Zankay
-date: '2017 november 28'
+date: "2017 november 28"
 output:
   html_document: default
-  pdf_document: default
   word_document: default
 ---
 
@@ -66,7 +65,7 @@ Data <- Data_raw[, -c(1,2,4,6:8)]
 # renaming country name, life expectancy and GDP per capita columns for easier usage
 names(Data) <- c("country", "life", "GDP")
 
-# Dropping the obsevórvations where there is no country, and dropping countries where life expectancy and/or GPD are missing
+# Dropping the observations where there is no country, and dropping countries where life expectancy and/or GPD are missing
 Data <- Data[country!="",]
 Data <- Data[life!="..", ]
 Data <- Data[GDP!="..", ]
@@ -82,10 +81,11 @@ Data [, "GDP"] <- Data [, .(GDP = GDP/1000)]
 Data [, logGDP := log(GDP)]
 ```
 
-We have loaded both csv files and merged them with inner join. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and/or GDP values have been dropped. We have `r Data[,.N]` entries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Life expectancy at birth is measure of how ling people people live on averahe in a specific country. GDP per capita stands for gross domestic product at purchasing power parity of a specific country, both at 2014 in our case. Finally we have divided GDP per capita by 1000 and took the log of it.
+#### Data preparation and Cleaning
 
-#### Data Cleaning
-As the first step of data cleaining we have downloaded a csv file containing the list of `r n_country` countries in the world as of now. There were many entries in our data set that were not about countries but some aggregations, so they were dropped.
+We have loaded both csv files and merged them with inner join. By using this special command we could make sure that relevant columns (Life expectancy and GDP) from the two tables were merged by matching the country name column, so the right values have been paired. The countries with missing life expectancy and GDP values have been dropped. We have `r Data[,.N]` entries of the `r n` left to analyze. Other unnecessary columns have also been dropped, such as Series Name, Series Code, Country Code. We have renamed the remaining columns as *country*, *life* and *GDP*, so it will be easier to type and use them. Life expectancy at birth is measure of how long people people live on average in a specific country. GDP per capita stands for gross domestic product at purchasing power parity of a specific country, both at 2014 in our case. Finally we have divided GDP per capita by 1000 and took the log of it because GPD per capita makes more sense in relative than in absolute terms, we will investigate it further in the next exercise.
+
+We have downloaded a csv file containing the list of `r n_country` countries in the world as of now. There were many entries in our data set that were not about countries but some aggregations, so they were dropped.
 We have aggregated lines in the data, that we have to remove as we only care about countries in the analysis.
 We do this cleaning in two steps: first we check entries where the "country" is not inlcuded in the list of downloaded countries.
 Then we manually checked all of them, and collected those that are really not countries. (In the previous step some get classified as "non country" due to different writing in Data Bank and in the downloaded country list csv file). Once we had this collection of real non-countries, we removed all from the Data.
@@ -99,6 +99,11 @@ Garbage [, country]
 SuspectedGarbage [ c(1,2,4,5,6,7,8,11:15,20,21,28,29,32,38,39,40,41,50,51,52,61,64,65,66,68,71,75,76,77,80),country]
 #Removing all non country entries from the database and keeping only countries
 Data <- Data[!country %in% Garbage [,country]]
+
+# creating a csv 
+Data_to_csv <- Data
+Data_to_csv$logGDP <- NULL
+write.csv(Data_to_csv, file = "dataset_for_2.1.csv")
 ```
 
 The `r Garbage[,.N]` entries have been dropped because of being marked as non-countries. After data cleaning we have `r Data[,.N]` countries to investigate.
@@ -159,8 +164,6 @@ ggplot(Data, aes(x = logGDP, y = life)) + geom_point () +
   ggtitle ("Q2. Log GDP - Life expectancy") + labs(x="Log GDP per capita, PPP [USD]",y="Life expectancy at birth [years]")
 ```
 
-The above graphs show that we are probably on the right track when trying to find relationship between log GDP and Life Expectancy, rather than GDP and Life Expectancy.
-
 We took the log of GDP per capita, as we are interested in relative % changes instead of absolute terms. Lowess produces a smooth curve, that allows us to capture non-linear patterns. (The con of lowess is that it does not provide a formula to describe the relationship between life expectancy and GDP. What lowess does is that it provides an expected y value for every x values and for x values in-between resulting in a graph that we can use in qualitative analysis.
 In this particular case we have log GDP per capita on the x axis and life expectancy on the y axis.
 
@@ -217,6 +220,7 @@ R-squared is slightly lower than in the previous case, but it is not significant
 #### Lev - Lev regression
 
 Though the scatterplots above suggested that the level - level linear correlation probaly is not the best model, just for the sake of completeness let's see a level-level linear regression model.
+
 ``` {r Q2_Lev-Lev}
 # LOG-LOG REGRESSION
 reg_levlev <- lm(life ~ GDP, data=Data)
@@ -374,6 +378,47 @@ Conf95
 # Coefficients and Confidence interval at 95% have been calculated with built-in R functions as well as with statistical formulas. It is worth noting that Alpha and Beta estimates are the same that we got earlier, and examined when printed the summary of reg_levlog model.
 ```
 
+Confidence interval (CI) of the predicted value tells us where to expect average y given the value of x in the population represented by the data.
+In the below two charts we put up the 95% mean and confidence intervales for lowess - linear (level - log) and lowess - PLS regressions.
+The reason why we selected lowess as a comparison base is that it is supposed to be the closest fit.
+
+```{r Q2_interpreting_visualizing}
+plx_lowess <- predict (reg_loess, se = T)
+plx_levlog <- predict (reg_levlog, se = T)
+plx_PLS <- predict (reg_PLS, se = T)
+
+
+ggplot(data = Data, aes(x=logGDP, y=life)) +
+  ggtitle ("Q2. Lowess and Linear with Confidence intervals at 95%") + labs(x="Log GDP per capita, PPP [USD]",y="Life expectancy at birth [years]") +
+  geom_line(data=Data, aes(x=logGDP,y=plx_lowess$fit),colour="blue",size = 1) + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit - qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit + qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") +
+  geom_line(data=Data,aes(x=logGDP,y=plx_levlog$fit),colour="red",size = 1)+
+  geom_line(data=Data, aes(x = logGDP, y = plx_levlog$fit - qt(0.975, plx_levlog$df)*plx_levlog$se), lty = 4, colour="red") +
+  geom_line(data=Data, aes(x = logGDP, y = plx_levlog$fit + qt(0.975, plx_levlog$df)*plx_levlog$se), lty = 4, colour="red") +
+  theme(panel.background = element_blank())
+  
+ggplot(data = Data, aes(x=logGDP, y=life)) +
+  ggtitle ("Q2. Lowess and PLS with Confidence intervals at 95%") + labs(x="Log GDP per capita, PPP [USD]",y="Life expectancy at birth [years]") +
+  geom_line(data=Data, aes(x=logGDP,y=plx_lowess$fit),colour="blue",size = 1) + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit - qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_lowess$fit + qt(0.975, plx_lowess$df)*plx_lowess$se), lty = 2, colour="blue") +
+  geom_line(data=Data,aes(x=logGDP,y=plx_PLS$fit),colour="red",size = 1) + 
+  geom_line(data=Data, aes(x = logGDP, y = plx_PLS$fit - qt(0.975, plx_PLS$df)*plx_PLS$se), lty = 4, colour="red") +
+  geom_line(data=Data, aes(x = logGDP, y = plx_PLS$fit + qt(0.975, plx_PLS$df)*plx_PLS$se), lty = 4, colour="red") +
+  theme(panel.background = element_blank())
+```
+
+What we see is that both PLS and the linear regression curves are within the CI bounds of lowess, and vica versa. 
+Also, the confidence intervals around the linear and lowess overlap over the entire range of data, and the same is true to the PLS and lowess relation.
+These suggest that both are pretty good estimators.
+
+We would keep the linear (level - log) model or the following reasons:
+- In R square this is very close to the best models (which is PLS), the difference in very small,
+- The simple linear has a big advantage: its simplicity,
+- PLS shows some negative slope towards the high end oog Log GDP, something that we do not observe in the lowess.
+
+For very similar reasons we prefer the linera level - log compared to some other models that have marginally better R-square, such as Quadratic Level -Log or Cubic Level - Log.
 
 ### <span style="color:blue"> 3. Estimate a weighted regression (weight=population). Compare results to what we saw in class. 
 </span>
@@ -425,12 +470,16 @@ Download hotels_all_nov21.csv. Pick a city. Consider hotels and hostels. Conside
 The goal of the exercise is to use information you have in your data to find a shortlist of five hotels and/or hostels that are good candidates for a good deal. You have to estimate a regression of prices (or log prices) on the other variables of your choice. You have to document your analysis and print the shortlist. 
 </span>
 
-``` {r Q22_basic}
+``` {r Q22_basic, results='hide'}
+library(lmtest)
+# library(stargazer)
+library(sandwich)
+
 #### Data Loading
 file <- 'hotels_all_nov21.csv'
 # exercise parameters
 MIN_STARS <-2
-hotels_all <- fread (file)
+hotels_all <- fread(file, encoding = 'UTF-8')
 str (hotels_all)
 
 #### Selecting a city randomly
@@ -441,14 +490,15 @@ mycity <- hotels_all [, unique(city)][selectindex]
 mycity
 
 #### Filtering to Accomodation type and star
-#checking if accomodation types, to check if there are various spellings of "hotel" and "hostel" in the dataset
-hotels_all [city == mycity & stars >=2, unique (accommodation_type)]
+#checking if accomodation types are various spellings of "hotel" and "hostel" in the dataset
+hotels_all [city == mycity & stars >=MIN_STARS, unique (accommodation_type)]
 #filtering to selected city and requested star and accomodation types
 myhotels <- hotels_all [city == mycity & stars >=MIN_STARS & accommodation_type %in% c("Hotel", "Hostel"),]
 # str (myhotels)
 
 #### Data Cleaning 1: dropping those with missing parameters
 myhotels [is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount),]
+data_missing <- myhotels [is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount),.N]
 myhotels <- myhotels [!(is.na (distance) | is.na(price) | is.na(stars) | is.na(rating) | is.na(badge_excellence) | is.na(rating_reviewcount)),]
 
 #### Data Cleaning 2: dropping duplicates
@@ -462,62 +512,125 @@ myhotels [,.(address, .N), by = name][N>1,]
 # checking the other 2 on the list with identical names & addresses
 myhotels [name %in% c("Athens Lotus Hotel", "Metropolitan Hotel")]
 myhotels1 <- myhotels[!duplicated(myhotels[,id]),]
+n_duplicate <- myhotels[duplicated(myhotels[,id]),.N]
 ```
 
-We assumed that 'distance' is the distance from the city center
+First we have loaded the file and picked a city randomly (happened to be Athens). We have filtered down the data to accommodation types 'Hostel' and 'Hotel' with at least 2 stars. After narrowing down the data we have done further data cleaning. We are interested in a few variables, such as distance from the city center, price, number of stars, rating, rating viewcounts, different badges of excellence the hotel or hostel might have, all other variables are excluded. First we have dropped `r data_missing` observations that miss parameters we might be interested in. Then we have dropped `r n_duplicate` duplicates, there were hotels with the same address, and a few hotels had more addresses, these have been sorted out.
 
-Next step is to filter extreme values.
-- remove those that are considered to be outside of Athens (apparently all those that are further away than the hotel with the highest distance in Piraeuswhich means that we conside everything that is further away then Piraeus as suburb not Athens).
-- we do not drop any hotel due to high price.
-
-``` {r Q2_extremevalues}
+``` {r Q22_extremevalues, results='hide'}
 max_in <- myhotels1 [city_actual == "Piraeus", max (distance)]
 myhotels2 <- myhotels1[distance <= max_in, ]
 myhotels2 [price >200,]  #checking who the very expensive ones are. After analyzing on web, we found tht these all are "normal" high priced hotels, we keep those.
-myhotels3 <- myhotels2 [, .(distance, stars, badge_excellence, rating, rating_reviewcount, price)] #remove not needed data
-
+myhotels3 <- myhotels2 [, .(name, distance, stars, badge_excellence, rating, rating_reviewcount, price)] #remove not needed data
 ```
+
+Next step was to filter extreme values, a few hotels have been removed because being considered to be outside of Athens (apparently all those that are further away than the hotel with the highest distance in Piraeuswhich means that we conside everything that is further away then Piraeus as suburb not Athens). It is important to mention that we did not drop any hotel due to high price.
+We limited our investigation to hotels and hostels that are not futher than `r max_in`km.
 
 ### <span style="color:blue"> 2.2.1. Pick a set of variables. Describe all variables used in the analysis.
 </span>
 
-!!! I guess these are distance, stars, rating, badge_excellence, rating_reviewcount, price
-!!!BLA-BLA-BL
+Now we need to describe all the variables we are going to use in the analysis.
 
-Now we need to describe all the variables we have. Let's have a scatterplot first with distance on the x axis and price on the y axis.
+First variable to discuss is price, currency is EUR and tells us, how much a single night costs for 2 people in that certain accommodation.
 
-```{r Q22_statistics_of_variables}
-ggplot(myhotels1, aes(x=distance, y=price)) + geom_point(shape = 1) + ggtitle(labs(title = "Q2. Scatterplot of price on distance", x = "Distance from the city center [km]", y = "Price [EUR]"))
-
+```{r Q221_statistics_of_price}
 # SUMMARY STATISTICS ON PRICE
-qplot(myhotels1[,price], geom="histogram", binwidth=20) + theme_bw() + ggtitle(labs(title = "Q2. Histogram of price variable", x = "Price [EUR]"))
-price_stat<-myhotels1[,.(mean_price = mean(price) , sd_price = sd(price), 
+qplot(myhotels3[,price], geom="histogram", binwidth=20) + theme_bw() + ggtitle(labs(title = "Q221. Histogram of price variable", x = "Price [EUR]"))
+price_stat<-myhotels3[,.(mean_price = mean(price) , sd_price = sd(price), 
                       min_price = min(price) , max_price = max(price), 
                       p50=quantile(price,.50), p95=quantile(price,.95), n=.N )]
 pander(price_stat)
+
+myhotels3$lnprice <- log(myhotels3$price)
 ```
 
-BLA BLA
+Price variable has a log normal like distribution, it is skewed to the right with a long right tail. The mean is `r price_stat$mean_price` EUR. The most offers are in the 50-70 price range. Price tells us, how much a single night costs for 2 people in that certain accommodation. We took the log of the price variable, please find a histogram of it below.
 
-```{r}
+```{r Q221_statistics_of_lnprice}
+ggplot(myhotels3, aes(lnprice)) + geom_histogram() + ggtitle(labs(title = "Q221. Histogram of lnprice variable", x = "lnprice"))
+```
+
+With having the logarithm of price variable we now have a more symmetric normal like distribution.
+
+Distance variable describes how far a hotel or hostel is from the city center, it is measured in km.
+
+```{r Q221_statistics_of_distance}
 # SUMMARY STATISTICS ON DISTANCE
-qplot(myhotels1[,distance], geom="histogram", binwidth=0.4) + theme_bw() + ggtitle(labs(title = "Q2. Histogram of distance variable", x = "Distance from the city center [km]"))
+qplot(myhotels3[,distance], geom="histogram", binwidth=0.4) + theme_bw() + ggtitle(labs(title = "Q221. Histogram of distance variable", x = "Distance from the city center [km]"))
 
-distance_stat <-myhotels1[,.(mean_dist = mean(distance) , sd_dist = sd(distance),
+distance_stat <-myhotels3[,.(mean_dist = mean(distance) , sd_dist = sd(distance),
                           min_dist = min(distance) , max_dist = max(distance),
                           p50 = quantile(distance,.50), p95 = quantile(distance,.95), n=.N )]
 pander(distance_stat)
+
+myhotels3$lndistance = log(myhotels3$distance+0.1)
 ```
+
+Distance variable has also a log normal like distribution with a long right tail, most of the the hotels and hostels are in the 0.2-0.6km range.
+
+After having these variables shortly described let's create two scatterplots with distance on the x axis, price and lnprice on the y axis, to see, if there is any general relation to observe betweem tha variables.
+
+```{r Q221_distance_price_scatterplots}
+ggplot(myhotels3, aes(x=distance, y=price)) + geom_point(shape = 1) + ggtitle(labs(title = "Q221. Scatterplot of price on distance", x = "Distance from the city center [km]", y = "Price [EUR]"))
+
+ggplot(myhotels3, aes(x=distance, y=lnprice)) + geom_point(shape = 1) + ggtitle(labs(title = "Q221. Scatterplot of lnprice on distance", x = "Distance from the city center [km]", y = "lnrice"))
+```
+
+Both scatterplot shows that there is a general negative relation between price and distance closer to the city center, which might not be true for observations further from the center. We need to investigate it further.
+
+Stars variable shows how many stars a hotel or hostel has. There are a few accommodations with half stars. 2 stars are the most common in our data, the more stars the accommodation has, the less observations we have in the data. Please find a histogram of stars below.
+
+```{r Q221_statistics_of_stars}
+ggplot(myhotels3, aes(stars)) + geom_histogram() + ggtitle(labs(title = "Q221. Histogram of stars variable", x = "stars"))
+pander(table(myhotels3$stars))
+```
+
+We have created a histogram of the rating variable, please find some summary statistics below.
+
+```{r Q221_statistics_of_ratings}
+ggplot(myhotels3, aes(rating)) + geom_histogram() + ggtitle(labs(title = "Q221. Histogram of rating variable", x = "rating"))
+
+rating_stat <-myhotels3[,.(mean_rating = mean(rating) , sd_rating = sd(rating),
+                          min_rating = min(rating) , max_rating = max(rating),
+                          p50 = quantile(rating,.50), p95 = quantile(rating,.95), n=.N )]
+pander(rating_stat)
+```
+
+It has a range of 1 - 4.8, with one decimal. These ratings have been given by previous guests and should represent how satisfied they were with services provided. It is a numeric value and its distribution is skewed to the left, the mean is `r rating_stat$mean_rating`.
 
 ### <span style="color:blue"> 2.2.2. Investigate potential nonlinearity of each explanatory variable in simple regressions of the dependent variable. Decide on a parametric functional form for each.
 
-Amiket szerintem érdemes megnézni:
-lev-lev
-lev-log
-quadratic
-cubic
+We were investiagting potential non-linearity by using lowess non-parametric regression first. This regression is supposed to uncover potential non-linearities. At first let's estimate a lowess regression on lnprice and distance.
 
-``` {r Q2_nonlinears}
+```{r Q223_lowessGraph_distance, results='hide'}
+# Estimating a lowess non-parametric regression on the data set.
+regQ2_loess <- loess (lnprice ~ distance, myhotels3)
+ggplot(data = myhotels3, aes(x=distance, y=lnprice)) +
+  geom_point(size=1.5) +
+  ggtitle ("Q223. Lowess regression") + labs(x="distance",y="lnprice") +
+  geom_line(data=myhotels3,aes(x=distance,y=predict(regQ2_loess)),colour="blue",size = 1)
+summary (regQ2_loess)
+```
+
+The lowess regression shows that there is a strong negative relation between price and distance very close to the city center, but at about 1km away from the center there is a change in the relation. At approximately 1.5km the relation becomes negative again, but it is much flatter now than in the first section, at the very end it becomes totally flat. It is important to highlight that there are only a few observation in the 2-4 km range.
+
+Then let's estimate a lowess regression on ln price and rating.
+
+```{r Q223_lowessGraph_rating, results='hide'}
+
+regQ2_loess_rating <- loess (lnprice ~ rating, myhotels3)
+ggplot(data = myhotels3, aes(x=rating, y=lnprice)) +
+  geom_point(size=1.5) +
+  ggtitle ("Q223. Lowess regression") + labs(x="rating",y="lnprice") +
+  geom_line(data=myhotels3,aes(x=rating,y=predict(regQ2_loess_rating)),colour="blue",size = 1)
+
+# no chart for stars, as it is categoric
+```
+
+It shows the beyond rating 2 there is a general positive relation between lnprice and rating.
+
+``` {r Q222_nonlinears, results='hide'}
 ### Creating binary variables out of of badge_excellence
 myhotels3 [, Gold := (badge_excellence == "Gold Award 2017") + 0.1]
 myhotels3 [, Loved := (badge_excellence == "Loved by guests") + 0.1]
@@ -546,25 +659,158 @@ R2Table <- data.table (c("lev - lev lin", "lev - log", "Quadratic", "Qubic"),
                           R2s (myhotels3 [, rating], myhotels3 [, price])
                           )
 names(R2Table) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
-R2Table
+
+# below the same on log (price)
+
+R2Table_Log <- data.table (c("log - lev lin", "log - log", "Log Quadratic", "Log Qubic"), 
+                       R2s (myhotels3 [, distance], myhotels3 [, log (price)]), 
+                       R2s (myhotels3 [, stars], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, Gold], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, Loved], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, Top], myhotels3 [, log(price)]),
+                       R2s (myhotels3 [, rating], myhotels3 [, log(price)])
+)
+names(R2Table_Log) <- c("RegType", "Distance", "Stars", "Gold", "Loved","Top", "Rating")
+```
+
+Below is a summary on the R squares of the various linear and non linear regressions. In the first table it is for price level, in the second one for log price.
+```{r Q224_results_of-R2Table}
+pander(R2Table)
+pander (R2Table_Log)
+```
+As we saw in the price histogram, price is very much right skewed, we therefore analize log price.
+Based on R-square we select the following functional forms:
+
+- Distance: Cubic, because of the price - distance lowess chart we saw (has local min and max too)
+
+- Stars: Linear, as the realtive R-square gains of anz higher order polinom would not justify the extra complexity
+
+- Gold dummy variable: due to its poor R-square we probably ignore it, but let us see later
+
+- Loved dummy variable: we use the linear, as this is a binary so no point using any other
+
+- Rating: Quadratic, because of the price - rating lowess chart we saw (close to parabola)
+
+### <span style="color:blue"> 3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
+
+We consider the above parameters for multiple regression.
+```{r Q223 multiple_regression}
+myhotels3 [, distance_2 := distance ^2]
+myhotels3 [, distance_3 := distance ^3]
+myhotels3 [, rating_2 := rating ^2]
+multireg <- lm (log(price) ~ distance + distance_2 + distance_3 + stars + Top + Loved + rating + rating_2, data = myhotels3)
+multireg1 <- lm (log(price) ~ distance + distance_2 + distance_3 + stars + Gold + rating + rating_2, data = myhotels3)
+summary (multireg)
+summary (multireg1)
+```
+
+R saquare seems to be fairly OK, much better compared to any simple regression of any shape.
+
+Looking at the coefficients we can see that some add little and close to zero, so let us see what happens to R square if we drop those variables and simplify the model.
+We drop: distance_2, distance_3, Gold, Loved.
+For the rets, the multiple regression is re-calculated.
+
+```{r Q223 multiple_regression_simplified}
+multireg2 <- lm (log(price) ~ distance + stars + Top + rating + rating_2, data = myhotels3)
+summary (multireg2)
+```
+
+As we see it was a good simplification: we got rid of a few "complicated" variables while kept R-square almost as high as it was.
+
+
+
+Doing the t-tests for each regression
+
+```{r Q223 t-test}
+#coeftest(simplereg1, vcov=sandwich)
+#coeftest(simplereg2, vcov=sandwich)
+#coeftest(simplereg3, vcov=sandwich)
+#coeftest(simplereg4, vcov=sandwich)
+#coeftest(simplereg5, vcov=sandwich)
+
+multireg3 <- lm(lnprice ~ distance + rating + Gold + Loved + Top + stars, data=myhotels3)
+coeftest(multireg3, vcov=sandwich)
+#stargazer(list(simplereg1), list(simplereg2), list(simplereg3), list(multireg3), digits=2, out="hotels_reg2.tex")
+```
+
+### <span style="color:blue"> 4. Pick two slope coefficients, interpret them, and compute and interpret their 95% CI.
+
+Let's pick stars, based on the results we can observe that it is significant at 0.1%. The lsope means that price is x% higher for observations with one more star.
+
+Rating is significant at 1% but not significant at 0.1%.
+
+We have picked the slope of log price on distance... 
+
+```{r Q224_slope1}
+#summary(simplereg1)
+#onfint(simplereg1)
+#ggplot(data = myhotels3, aes(x=distance, y=lnprice)) + geom_point(size=0.5, colour="red") + geom_smooth(method="lm", colour="black")
 
 ```
 
-#### itt átváltható az Imre által használt  myhotel3 a hotel9 névre, de Imre kihagyta a hotel nevét az ő táblájából.
+...and the slope of log price on rating
+
+```{r Q224_slope2}
+#summary(simplereg2)
+#confint(simplereg2)
+#ggplot(data = myhotels3, aes(x=rating, y=lnprice)) + geom_point(size=0.5, colour="red") + geom_smooth(method="lm", colour="black")
+
+```
+Interpretations.
+
+price/distance:
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  4.60288    0.06798  67.712  < 2e-16 ***
+distance    -0.20961    0.05224  -4.012 8.77e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.5565 on 182 degrees of freedom
+Multiple R-squared:  0.08127,	Adjusted R-squared:  0.07622 
+F-statistic:  16.1 on 1 and 182 DF,  p-value: 8.768e-05
+
+95°% CI:
+                2.5 %     97.5 %
+(Intercept)  4.4687548  4.7370031
+distance    -0.3126862 -0.1065369
+
+Negative correlation, slope estimated -0.21.The t(p) value is close to zero, indicating a significant relationship between price and distance. R squared is low, meaning that solely the var. distance is hardly explaining the variance of price
+
+price/rating:
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  1.32834    0.30550   4.348 2.28e-05 ***
+rating       0.74840    0.07432  10.070  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.4653 on 182 degrees of freedom
+Multiple R-squared:  0.3578,	Adjusted R-squared:  0.3543 
+F-statistic: 101.4 on 1 and 182 DF,  p-value: < 2.2e-16
+
+95°% CI
+               2.5 %    97.5 %
+(Intercept) 0.7255570 1.9311240
+rating      0.6017687 0.8950387
+
+Positive correlation, slope estimated +0.75.The t(p) value is close to zero here as well, indicating a significant relationship between price and rating. R squared is mutch higher then in price/distance regression (although still not high), the meaning is that the variance of rating gives a better explanation of the variance of price then we saw in case of price on distance. Lower Residual Standard Error of price/rating regression compared to price/ distance also confirming the stronger relation between variables, by showing a better fit of regression.
+
+### <span style="color:blue"> 5. Describe your strategy to find the best deal.
+
+The strategy to find the best deal is to find offers that have the largest negative residuals. The regression line tells us what would be the price on average. The greater the residual is in a negative sense, the better deal we find.
+
+
+### <span style="color:blue"> 6. List the hotels with the smallest (most negative) residuals. List their prices and other characteristics as well. Comment on the results. 
+
+The 3 best deal hotels are in the below table.
+
+```{r Q224_strategy}
+myhotels3 [, res := residuals (multireg2)]
+myhotels3 [,][order((residuals(multireg2)))][c(1,2,3),]
 ```
 
-3. Estimate a multiple regression with all explanatory variables in the functional form you specified previously.  
-
-4. Pick two slope coefficients, interpret them, and compute and interpret their 95% CI. 
-
-5. Describe your strategy to find the best deal. 
-
-6. List the hotels with the smallest (most negative) residuals. List their prices and other characteristics as well. Comment on the results. 
-
-Problem 2.3
-
-- Pick another city.
-
-- Estimate the model of your choice in the previous exercise (ie the exact same dependent variables, same functional form) for another city of your choice. Discuss your finding.
 
 test
