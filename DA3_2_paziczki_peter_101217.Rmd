@@ -29,7 +29,6 @@ library(fBasics) # for basicStats function
 library(lmtest) # for coeftest
 library(sandwich)
 library(stargazer)
-library(descr)
 library(pander)
 library(mfx)
 
@@ -190,12 +189,10 @@ The following plot was created by the stargazer package, it does tell that same 
 
 ```{r Q3_stargazer_LPM1, results='asis'}
 stargazer(list(lpm1), digits=3, out="sports_mortality_1.html")
-# stargazer(list(lpm1, lpm2), digits=3, out="sports_mortality_2.html")
 ```
 
 ```{r Q3_shiny_LPM1}
 shiny::includeHTML('./sports_mortality_1.html')
-# shiny::includeHTML('./sports_mortality_2.html')
 ```
 
 The following scatterplot has a regression line plotted on it, showing that the *deceased* variable can take only two values, 0 and 1, and the *sports* variable can take the already described for values, 1 to 4. The regression line seems to be flat, but if we compared the probabilities of being deceased for sports_1 and sports_4 to each other, we would see that 5.9 percentage points are a 64% difference.
@@ -336,47 +333,89 @@ ggplot(data = share, aes(x=income10g, y=deceased)) +
   scale_colour_manual(name="Legend",values=c("#00BFC4","#F8766D", "black", "green"))
 ```
 
+#### Estimating LPMs with possible confounders
 
+I have estimated three regressions, (1) is the regression from question 3, considering only the *sports* categorical variables, these results have already been interpreted. The (2) regression is considering the confounders in a linear model, (3) regression considers the same confounders but in a cucbic model, more precisely:
 
-```{r Q5_LPM_model}
-lpm4 <- lm(deceased ~ sports_1 +sports_2 + sports_3 + female + age + eduyears_mod + income10g, data=share)
-lpm5 <- lm(deceased ~ sports_1 +sports_2 + sports_3 + female + poly(age,3) + poly(eduyears_mod,3) + poly(income10g,3), data=share)
-coeftest(lpm4, vcov=sandwich) # with linear models: we have a higher estimate for smokers, for ever smokers it is now lower, but still significant
-# 1.7 percentage points higher prob if you ever smoked; 3.7 percentage points higher prob of dying for who currently smokes compared to those
-# who never smoked (2.1+1.6 adding ever_smoed and smokes)
-coeftest(lpm5, vcov=sandwich) # including polinomial components does not make any difference in the smokes and ever_smoked estimates
+* (1) *deceased* on *sports_1, sports_2, sports_3*, *sports_4* as a reference category, in a linear model,
 
-stargazer(list(lpm1, lpm4, lpm5), digits=3, type="html",out="smoking_mortality_2.doc")
+* (2) *deceased* on *sports_1, sports_2, sports_3, female, age_new, eduyears_mod, income10g_new*, *sports_4* as a reference category, in a linear model,
+
+* (3) *deceased* on *sports_1, sports_2, sports_3, female, age_new, eduyears_mod, income10g_new*, *sports_4* as a reference category, in a cubic model.
+
+*age_new* variable has been introduced to make the interpretation easier, I have substracted 50 from *age* variable, so when regressing an LPM model, interpreting the Constant will make sense. I have done the same procedure with *income10g* variable, but have substracted only 1.
+
+Looking at *sports_1, sports_2, sports_3* and *sports_4* as a reference category (constant), variables we can clearly see that considering the confounders made all the coefficients lower. All the *sports* variables are significant at 0.1%, according to the results of coeftest function. Please considering the coming analysis with keeping the following in mind, when comparing the coefficients we assume that individuals being compared had the same age and gender, spent the same number of years in education and fell into the same household income category.
+
+According to regressions (2) and (3), those who did sports more than once a week, had a 4.4 and 4.3 percetnage points lower probability of passing away within 6 year, respectively. It is very similar to indivudals falling in *sports_2* catogery. Those who did sports one to three times a months had a 3.7 and 3.5 percentage points lower probability of being deceased in 6 years. The intercept refers to *sports_4* reference category representing people that did sports hardly ever or never, they had a 6.6 and 10.3 percentage points higher mortality rate within 6 years. As there is no significant difference between regression (2) and (3), including polinomial components did not make significant difference, except in case of *sports_4* category, considering which one is easier to interpret, I would choose regression (2) for further analysis and interpretation.
+
+```{r Q5_LPM_model, results='hide'}
+share$age_new <- share$age-50 # otherwise intercept would be more difficult to interpret, it would be a high positive number and misleading the interpretation
+share$income10g_new <- share$income10g-1
+
+lpm2 <- lm(deceased ~ sports_1 +sports_2 + sports_3 + female + age_new + eduyears_mod + income10g_new, data=share)
+lpm3 <- lm(deceased ~ sports_1 +sports_2 + sports_3 + female + poly(age_new,3) + poly(eduyears_mod,3) + poly(income10g_new,3), data=share)
 ```
 
-### <span style="color:blue"> 6. Re-do exercises 3 & 5 using logit. Calculate and interpret the marginal differences of the sports variables. Discuss the differences and similarities to the LPM results. 
+```{r Q5_coeftest}
+coeftest(lpm2, vcov=sandwich)
+coeftest(lpm3, vcov=sandwich)
+```
+
+In regression (2) all the confounders are significant at 0.1%. The coefficient of female variable is -3.7, meaning that female had a 3.7 percentage point lower mortality rate on average compared to men with the same age, having spent the same number of years in education, being in the same household income category and having the same sporting frequency. Age has a positive slope, meaninig the on average, people had a 0.5 percentage points higher probability of passing away within 6 years compared to those who were 1 year younger, had the same gender, spent the same number of years in education and had the same sporting frequency.
+
+Looking at *income10g_new* variable we can state that people who fell in a certain household income category had a 0.1 percenatge points lower mortality rate on average compared to those who fell into a 1 unit lower income category, had the same gender, spent equal years in education, had the same age and sporting frequency. *eduyears_mod* variable had a negative slope as well, but a very low one. People who spent the same number of years in education were 0.1 percentage points less likely to be deceased within 6 yeas, on average, compared to those who spent 1 year less in education, but had the same age and gender and fell into the same household income category.
+
+After interpreting the results we can conclude that adding the confounders provided a better estimation about the possible positive effects of doing sports, but it is still not enough to consider causal effects. We can only state those who frequently do sports, are less likely to pass away on average within 6 years. There are much more variables that we could consider, such as sleeping habits, chronical deceases in the familiy, eating habits, etc. We have also uncovered that having polinomial components in the regression did not provide significant difference.
+
+The following plot was created by the stargazer package, I have only added to provide a nicer output for the results.
+
+```{r Q5_stargazer, results='asis'}
+stargazer(list(lpm1, lpm2, lpm3), digits=3, type="html",out="sports_mortality_2.html")
+```
+
+```{r Q5_shiny_LPM1}
+shiny::includeHTML('./sports_mortality_2.html')
+```
+
+### <span style="color:blue"> 6. Re-do exercises 3 & 5 using logit. Calculate and interpret the marginal differences of the sports variables. Discuss the differences and similarities to the LPM results.
+
+For prediction Logit and Probit models are used in general.
+
+#### Logit
 
 ```{r}
 # PROBIT & LOGIT
 
-logitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, family='binomial')
+logitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, family='binomial')
 # glm function for generalization, family binomial - it means exponential function will be used
-logitmarg <- logitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, atmean=FALSE)
+logitmarg <- logitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, atmean=FALSE)
 # logitmfx - computing marginal effect
 summary(logitcoeffs) # don't interpret these coefficients
 print(logitmarg) # marginal effects - on average in my sample what is the marginal effect of a small increase in my explinatory variable
 # it is about the marginal change on average; all the other variables kept fix, the avg marginal effect of unit increase is this much ...
-# logit estimates something similat to what the simple linear regression model estimates
+# logit estimates something similar to what the simple linear regression model estimates
 # if i want to do prediction, probit and logit performs better
+```
 
-probitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, family='gaussian')
-probitmarg <- probitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age +eduyears_mod + income10g, data=share, atmean=FALSE)
+#### Probit
+
+```{r}
+probitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, family='gaussian')
+probitmarg <- probitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, atmean=FALSE)
 summary(probitcoeffs)
 print(probitmarg)
 
-stargazer(list(lpm4, logitcoeffs, probitcoeffs), digits=3, type="html", out="smoking_mortality_3.doc")
+stargazer(list(lpm2, logitcoeffs, probitcoeffs), digits=3, type="html", out="sports_mortality_3.html")
 
-share$pred_lpm <- predict.lm(lpm4)
+share$pred_lpm <- predict.lm(lpm2)
 share$pred_logit <- predict.glm(logitcoeffs, type="response")
 
 ggplot(data = share, aes(x=pred_logit, y=pred_lpm)) +
-  geom_line(aes(x=pred_logit, y=pred_logit), colour="orange") +
-  geom_point()
+  geom_line(aes(x=pred_logit, y=pred_logit, colour="support line")) +
+  geom_point(aes(colour="prediction")) +
+  ggtitle(labs(title = "Q6 Comparing logit(x axis) to LPM(y axis)", x = "prediction of logit model", y = "prediction of LPM model")) +
+  scale_colour_manual(name="Legend",values=c("#00BFC4","#F8766D"))
 # comparing the prediction of logit (x axis) to the linear model (y axis)
 # orange is just a 45 degree line to help interpretation
   
