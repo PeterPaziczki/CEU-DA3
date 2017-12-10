@@ -3,8 +3,8 @@ title: "DA3_3_paziczki_peter_101217"
 author: "Peter Paziczki"
 date: "2017 December 10"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 <style>
@@ -20,7 +20,7 @@ rm(list=ls())
 knitr::opts_chunk$set(echo = FALSE, warning=FALSE, message=FALSE)
 ```
 
-```{r initial_settings}
+```{r initial_settings, results='hide'}
 # Loading necessary libraries
 library(ggplot2)
 library(data.table)
@@ -375,50 +375,81 @@ stargazer(list(lpm1, lpm2, lpm3), digits=3, type="text", omit.stat=c("LL","ser",
 
 For prediction Logit and Probit models are used in general. The reason for it is that predicted probabilities can be more than 1 or less than 0 and therefore we cannot use them for predictions. There are models that have the feature of providing a probability that is always strictly between 0 and 1, they are called logit and probit. They are basically non-linear regressions with binary variables. The slope of these models are not constant and are practically meaningless, I won't interpret them. In case of these models we are investiagting the marginal differences, which show us the average differences in mortality rate corresponding to a one unit difference in one of the explanatory variables, while the other variables are kept constant. With other words it shows the average marginal effect of a one unit change in my explanatory variable, while the other variables are kept fixed.
 
-#### Logit and Probit models compared to LPM with linear components - regression (2)
+#### Logit and Probit models compared to LPM with linear components - regression (1)
 
-All the marginal differences are essentially the same in the Probit and Logit models, but they are not equal to *sports* variables we saw in regression (2). We are comparing individuals with different sporting habits to those that hardly ever or neved did sports, but had the same gender, age, household income category and numbers of years spent in education. Those who did sports more than once a week had a 3.7 percentage points lower probability of passing away within six years. In LPM this value was 4.5 percentage points. Those who did sports once a week had also lower percentage points compared to the LPM model, according to Logit and Probit they had a 3.4 percentage points lower likelihood of being deceased in 6 years. For the record, it was 4.5 percentage points in the LPM model. Those who did sports one to three times a month were 2.5 percentage points less likely to die within 6 years.
+I am going to compare the results of Logit and Probit models to the results of question 3 and 5,
 
-Please find the marginal differences of Logit model below:
+I am starting the comparison with results of question 3 where we did not control for any variables other than sport variables. All the marginal differences are bsaically the same in the Probit and Logit models, but they are not equal to *sports* variables we saw in regression (1). We are comparing now individuals to the reference category, to those who hardly ever or never did sport.
 
-```{r Q6_logit_computation, results='hide'}
+Those who did sports more than once a week had a 5.1 (in both Logit and Probit) percentage points lower probability of passing away within six years. In LPM this value was 5.9 percentage points. Those who did sports once a week had lower percentage points compared to the LPM model, according to Logit and Probit they had a 4.3-4.4 percentage points lower likelihood of being deceased in 6 years. For the record, it was 5.9 percentage points in the LPM model. Those who did sports one to three times a month were 2.8-2.9 percentage points less likely to die within 6 years. In the regression (1) it was 4.2 percentage points.
+
+```{r Q6_logit_computation_for_regression_1}
 # LOGIT
 
-logitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, family='binomial')
+logitcoeffs_q3 <- glm(deceased ~ sports_1 +sports_2 + sports_3, data=share, family='binomial')
 # glm function for generalization, family binomial - it means exponential function will be used
-logitmarg <- logitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, atmean=FALSE)
+logitmarg_q3 <- logitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3, data=share, atmean=FALSE)
 # logitmfx - computing marginal effect
 # summary(logitcoeffs) # don't interpret these coefficients
 
-print(logitmarg) # marginal effects - on average in my sample what is the marginal effect of a small increase in my explinatory variable
+print(logitmarg_q3)
+# marginal effects - on average in my sample what is the marginal effect of a small increase in my explinatory variable
 # it is about the marginal change on average; all the other variables kept fix, the avg marginal effect of unit increase is this much ...
 # logit estimates something similar to what the simple linear regression model estimates
 # if i want to do prediction, probit and logit performs better
 ```
 
-Please find the marginal differences of the Probit model below:
-
-```{r Q6_probit_computation, results='hide'}
+```{r Q6_probit_computation_for_regression_1}
 # PROBIT
 
-probitcoeffs <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, family='gaussian')
-probitmarg <- probitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, atmean=FALSE)
+probitcoeffs_q3 <- glm(deceased ~ sports_1 +sports_2 + sports_3, data=share, family='gaussian')
+probitmarg_q3 <- probitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3, data=share, atmean=FALSE)
 # summary(probitcoeffs)
 
-print(probitmarg)
+print(probitmarg_q3)
 ```
 
-To compare the results of coefficients of both Probit and Logit models to the results of LPM regression (2) I have created the below table. In column one you can see the coefficient of regression (2) from the previous exercise. The next two columns represents the coefficients of the Logit model and Probit model, respectively. We can see that the coefficients provided by the Logit model are approximately 20 times more than the results of LPM. These values are meaningless, we cannot interpret them. The Probit modell provided the same coefficients as the LPM regression.
+Logit and Probit models provided lower probabilities than linear LPM.
+
+#### Logit and Probit models compared to LPM with linear components - regression (2)
+
+All the marginal differences are essentially the same in the Probit and Logit models, but they are not equal to *sports* variables we saw in regression (2). We are comparing now individuals with different sporting habits to those that hardly ever or neved did sports, but had the same gender, age, household income category and numbers of years spent in education. Those who did sports more than once a week had a 3.7 percentage points lower probability of passing away within six years. In LPM this value was 4.5 percentage points. Those who did sports once a week had also lower percentage points compared to the LPM model, according to Logit and Probit they had a 3.4 percentage points lower likelihood of being deceased in 6 years. For the record, it was 4.5 percentage points in the LPM model. Those who did sports one to three times a month were 2.5 percentage points less likely to die within 6 years.
+
+Please find the marginal differences of Logit model below:
+
+```{r Q6_logit_computation_for_regression_2}
+# LOGIT
+
+logitcoeffs_q5 <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, family='binomial')
+
+logitmarg_q5 <- logitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, atmean=FALSE)
+
+print(logitmarg_q5)
+```
+
+Please find the marginal differences of the Probit model below:
+
+```{r Q6_probit_computation_for_regression_2}
+# PROBIT
+
+probitcoeffs_q5 <- glm(deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, family='gaussian')
+probitmarg_q5 <- probitmfx(formula = deceased ~ sports_1 +sports_2 + sports_3 + female + age_new +eduyears_mod + income10g_new, data=share, atmean=FALSE)
+# summary(probitcoeffs)
+
+print(probitmarg_q5)
+```
+
+To compare the results of coefficients of both Probit and Logit models to the results of LPM regression (1) and (2) I have created the below table. In column one and two you can see the coefficient of regression (1) and (2) from the previous exercises. The next four columns represents the coefficients of the Logit models and Probit models. We can see that the coefficients provided by the Logit model are approximately 20 times more than the results of LPM. These values are meaningless, we cannot interpret them. The Probit models provided the same coefficients as the LPM regressions.
 
 ```{r Q6_stargazer_logit_probit}
-stargazer(list(lpm2, logitcoeffs, probitcoeffs), digits=3, type="text", omit.stat=c("LL","ser","f", "aic"))
+stargazer(list(lpm1, lpm2, logitcoeffs_q3, probitcoeffs_q3, logitcoeffs_q5, probitcoeffs_q5), digits=3, type="text", omit.stat=c("LL","ser","f", "aic"))
 ```
 
-As I have mentioned previously that the difference between the coefficients provided by the LPM regression and the Logit model is significant. The following plot compares the prediction of these two. The magenta line is 45 degree supporting the interpretation.
+As I have mentioned previously that the difference between the coefficients provided by the LPM regression and the Logit model is significant. The following plot compares the prediction of these two (both LPM and Logit considering the confounders). The magenta line is 45 degree and is just supporting the interpretation.
 
 ```{r Q6_comparing_LPM_logit, results='hide'}
 share$pred_lpm <- predict.lm(lpm2)
-share$pred_logit <- predict.glm(logitcoeffs, type="response")
+share$pred_logit <- predict.glm(logitcoeffs_q5, type="response")
 
 ggplot(data = share, aes(x=pred_logit, y=pred_lpm)) +
   geom_line(aes(x=pred_logit, y=pred_logit, colour="support line")) +
@@ -435,7 +466,7 @@ In this stylized example I would like to show that Logit (and Probit) model may 
 
 ```{r Q6_age_with_LPM_logit, results='hide'}
 share$fit_lpm2 <- fitted.values(lpm2)
-share$fit_logit <- fitted.values(logitcoeffs)
+share$fit_logit <- fitted.values(logitcoeffs_q5)
 
 # qplot(share$fit_lpm2)
 # qplot(share$fit_logit)
