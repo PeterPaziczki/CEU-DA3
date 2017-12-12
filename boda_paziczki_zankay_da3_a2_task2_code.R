@@ -82,7 +82,7 @@ min_comp_age <- 2
 ## CLEANING
 
 # Kepping columns that we need
-bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
+bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'intang_assets', 'tang_assets', 'liq_assets', 'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
 
 # Filtering for the year chosen
 bisnode <- bisnode[year == research_year]
@@ -143,9 +143,23 @@ bisnode <- bisnode[tang_assets != 0]
 #bisnode[, ind_labor_avg := mean(labor_avg), by = ind2] bd: to be removed as labor is unreliable
 # Adding the size of company
 # bisnode$comp_size_big <- as.numeric(bisnode$labor_avg >= bisnode$ind_labor_avg) bd: to be removed as labor is unreliable, other measure for size to be defined
+bisnode <- bisnode [curr_assets + fixed_assets >=0,]
+bisnode [, size_third := quantile ((curr_assets + fixed_assets), 0.33), by = ind2]
+bisnode [, size_twothird := quantile ((curr_assets + fixed_assets), 0.66), by = ind2]
+bisnode [, size_cat := cut (curr_assets + fixed_assets, c(
+                            0, size_third [1],
+                            size_twothird [1], Inf),
+                            labels = c("small", "medium", "big")),
+                            by = ind2]
+# bisnode [, unique (size_twothird)] #bd: check
+# bisnode [, .N, by = size_cat] #bd: check
+
 
 # Expenses per employees
 # bisnode[, pers_exp_emp := personnel_exp / labor_avg] bd: to be removed as labor is unreliable
+#Fixed assets ~= Tangible Asset + Intangible Asset
+#Liquid Asset: part of current asset
+#Asset ~= Current Asset + Fix Asset
 
 # ====================================
 
@@ -157,6 +171,7 @@ bisnode[, comp_performance := inc_bef_tax / (curr_assets + fixed_assets - curr_l
 
 # Industry performance
 bisnode[, ind_performance := mean(comp_performance), by = ind2]
+#bisnode [, unique(ind_performance)] #checkpoint
 
 # CEO performance
 bisnode[, ceo_performance := comp_performance - ind_performance]
