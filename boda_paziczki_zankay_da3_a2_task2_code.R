@@ -82,7 +82,7 @@ min_comp_age <- 2
 ## CLEANING
 
 # Kepping columns that we need
-bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'intang_assets', 'tang_assets', 'liq_assets', 'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
+bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'intang_assets', 'tang_assets', 'liq_assets', 'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
 
 # Filtering for the year chosen
 bisnode <- bisnode[year == research_year]
@@ -174,7 +174,13 @@ bisnode[, ind_performance := mean(comp_performance), by = ind2]
 #bisnode [, unique(ind_performance)] #checkpoint
 
 # CEO performance
-bisnode[, ceo_performance := comp_performance - ind_performance]
+bisnode[, ceo_performance := comp_performance / ind_performance]
+
+#industry and CEO performance per size categories
+bisnode [, ind_performance_persize := mean (comp_performance),by = .(ind2, size_cat)]
+#bisnode [, unique(ind_performance_persize), by= .(ind2, size_cat)][order(ind2,size_cat),] #checkpoint
+bisnode[, ceo_performance_persize := comp_performance / ind_performance_persize]
+
 
 # ====================================
 
@@ -196,3 +202,4 @@ bisnode [, unique(gender)]
 bisnode [, unique(female)]
 #result 0.00 0.50 1.00 0.33 0.67 0.25 0.29 0.17 0.20 0.40 0.60
 # proposal: have dom_gender variable as follows: female <= 0.33: => male, 0.33 < female =< 0.66: mix, 0.66 <= female: female
+
