@@ -99,9 +99,8 @@ bisnode <- bisnode[ceo_age >= min_CEO_age]
 # creating young_CEO binary variable
 bisnode[,"young_CEO"] <- as.numeric(bisnode[,ceo_age] <= young_CEO_max_age)
 
-# dropping industry NAs
-# isnode <- bisnode[ind != ""]
-bisnode <- bisnode[ind2 %in% list(26,28,33,55,56)]
+ind2_list <- bisnode [,.N, by = ind2][N > 1000,][,ind2]
+bisnode <- bisnode [ind2 %in% ind2_list,]
 
 # number of days CEO spent in office, dropping those who spent less then a quarter as CEOs
 bisnode <- bisnode[inoffice_days >= min_CEO_exp_days]
@@ -139,22 +138,22 @@ bisnode <- bisnode[tang_assets != 0]
 # INDUSTRY AVERAGES
 
 # Average number of employees by industries
-pander(bisnode[, mean(labor_avg),by=ind2])
+# pander(bisnode[, mean(labor_avg),by=ind2]) bd: to be removed as labor is unreliable
 # Adding average number of employees by industries to the table
-bisnode[, ind_labor_avg := mean(labor_avg), by = ind2]
+#bisnode[, ind_labor_avg := mean(labor_avg), by = ind2] bd: to be removed as labor is unreliable
 # Adding the size of company
-bisnode$comp_size_big <- as.numeric(bisnode$labor_avg >= bisnode$ind_labor_avg)
+# bisnode$comp_size_big <- as.numeric(bisnode$labor_avg >= bisnode$ind_labor_avg) bd: to be removed as labor is unreliable, other measure for size to be defined
 
 # Expenses per employees
-bisnode[, pers_exp_emp := personnel_exp / labor_avg]
+# bisnode[, pers_exp_emp := personnel_exp / labor_avg] bd: to be removed as labor is unreliable
 
 # ====================================
 
 # MEASURE OF PERFORMANCE
-# return on asset / return on equity ... need to choose
+# ROCE = EBIT / CAPITA Employed 
 
 # Company performance - ROCE - returnal on capital employed
-bisnode[, comp_performance := inc_bef_tax / (curr_assets + fixed_assets - curr_liab)] # can change ...
+bisnode[, comp_performance := inc_bef_tax / (curr_assets + fixed_assets - curr_liab)] 
 
 # Industry performance
 bisnode[, ind_performance := mean(comp_performance), by = ind2]
