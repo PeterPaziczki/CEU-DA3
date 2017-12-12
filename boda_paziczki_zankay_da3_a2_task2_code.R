@@ -82,7 +82,7 @@ min_comp_age <- 2
 ## CLEANING
 
 # Kepping columns that we need
-bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
+bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'labor_avg', 'balsheet_notfullyear', 'exit_year', 'inc_bef_tax')]
 
 # Filtering for the year chosen
 bisnode <- bisnode[year == research_year]
