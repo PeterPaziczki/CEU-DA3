@@ -191,3 +191,8 @@ lm (ceo_performance ~ inoffice_days, data = bisnode)
 summary (lm (ceo_performance ~ inoffice_days, data = bisnode))
 # coefficients is not only small 2 x 10^-5, but it is significant only at ~80%, so most likely there is no relationship
 
+bisnode [, unique(gender)]
+#result: "male"   "mix"    "female"
+bisnode [, unique(female)]
+#result 0.00 0.50 1.00 0.33 0.67 0.25 0.29 0.17 0.20 0.40 0.60
+# proposal: have dom_gender variable as follows: female <= 0.33: => male, 0.33 < female =< 0.66: mix, 0.66 <= female: female
