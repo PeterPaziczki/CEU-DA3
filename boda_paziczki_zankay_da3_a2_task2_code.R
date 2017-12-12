@@ -84,8 +84,6 @@ min_comp_age <- 2
 # Kepping columns that we need
 bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
 
-table(bisnode$ind2)
-
 # Filtering for the year chosen
 bisnode <- bisnode[year == research_year]
 
@@ -102,7 +100,8 @@ bisnode <- bisnode[ceo_age >= min_CEO_age]
 bisnode$young_CEO <- as.numeric(bisnode$ceo_age <= young_CEO_max_age)
 
 # dropping industry NAs
-bisnode <- bisnode[ind != ""]
+# isnode <- bisnode[ind != ""]
+bisnode <- bisnode[ind2 %in% list(26,28,33,55,56)]
 
 # number of days CEO spent in office, dropping those who spent less then a quarter as CEOs
 bisnode <- bisnode[inoffice_days >= min_CEO_exp_days]
@@ -111,7 +110,7 @@ bisnode <- bisnode[inoffice_days >= min_CEO_exp_days]
 bisnode <- bisnode[ceo_age >= min_CEO_age]
 
 # dropping firms where average number of employees is less than the limit we set
-bisnode <- bisnode[labor_avg > min_employee]
+# bisnode <- bisnode[labor_avg > min_employee]
 
 # dropping firms where average number of employees are NA
 bisnode <- bisnode[labor_avg != ""] # more than 40.000 NAs
@@ -140,9 +139,9 @@ bisnode <- bisnode[tang_assets != 0]
 # INDUSTRY AVERAGES
 
 # Average number of employees by industries
-pander(bisnode[, mean(labor_avg),by=ind])
+pander(bisnode[, mean(labor_avg),by=ind2])
 # Adding average number of employees by industries to the table
-bisnode[, ind_labor_avg := mean(labor_avg), by = ind]
+bisnode[, ind_labor_avg := mean(labor_avg), by = ind2]
 # Adding the size of company
 bisnode$comp_size_big <- as.numeric(bisnode$labor_avg >= bisnode$ind_labor_avg)
 
@@ -158,7 +157,7 @@ bisnode[, pers_exp_emp := personnel_exp / labor_avg]
 bisnode[, comp_performance := inc_bef_tax / (curr_assets + fixed_assets - curr_liab)] # can change ...
 
 # Industry performance
-bisnode[, ind_performance := mean(comp_performance), by = ind]
+bisnode[, ind_performance := mean(comp_performance), by = ind2]
 
 # CEO performance
 bisnode[, ceo_performance := comp_performance - ind_performance]
@@ -168,7 +167,7 @@ bisnode[, ceo_performance := comp_performance - ind_performance]
 # PLOTS
 
 # Average performance of companies by industries, firm size and by CEO (young or old)
-pander(bisnode[, lapply(.SD, mean, na.rm = TRUE), by = list(ind, comp_size_big, young_CEO), .SDcols = c("comp_performance")])
+pander(bisnode[, lapply(.SD, mean, na.rm = TRUE), by = list(ind2, comp_size_big, young_CEO), .SDcols = c("comp_performance")])
 
 # Average company peformance per CEOs (young or old)
 pander(bisnode[, list(avg_perforamnce = mean(comp_performance)), by = young_CEO])
