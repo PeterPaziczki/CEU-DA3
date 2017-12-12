@@ -187,3 +187,7 @@ pander(bisnode[, lapply(.SD, mean, na.rm = TRUE), by = list(ind2, comp_size_big,
 pander(bisnode[, list(avg_perforamnce = mean(comp_performance)), by = young_CEO])
 
 # ====================================
+lm (ceo_performance ~ inoffice_days, data = bisnode)
+summary (lm (ceo_performance ~ inoffice_days, data = bisnode))
+# coefficients is not only small 2 x 10^-5, but it is significant only at ~80%, so most likely there is no relationship
+
