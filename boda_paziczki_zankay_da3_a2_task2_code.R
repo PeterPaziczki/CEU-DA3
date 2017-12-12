@@ -82,7 +82,9 @@ min_comp_age <- 2
 ## CLEANING
 
 # Kepping columns that we need
-bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'labor_avg', 'balsheet_notfullyear', 'exit_year', 'inc_bef_tax')]
+bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'tang_assets', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
+
+table(bisnode$ind2)
 
 # Filtering for the year chosen
 bisnode <- bisnode[year == research_year]
@@ -124,13 +126,14 @@ bisnode <- bisnode[comp_age > min_comp_age]
 bisnode <- bisnode[balsheet_notfullyear == 0]
 
 # dropping those countries that have NAs in financial variables
-bisnode <- bisnode[profit_loss_year != ""]
-bisnode <- bisnode[profit_loss_year != 0]
-bisnode <- bisnode[share_eq != ""]
-bisnode <- bisnode[share_eq != 0]
+bisnode <- bisnode[inc_bef_tax != ""]
+bisnode <- bisnode[inc_bef_tax != 0]
 bisnode <- bisnode[curr_assets != ""]
+bisnode <- bisnode[curr_assets != 0]
 bisnode <- bisnode[fixed_assets != ""]
+bisnode <- bisnode[fixed_assets != 0]
 bisnode <- bisnode[tang_assets != ""]
+bisnode <- bisnode[tang_assets != 0]
 
 # ====================================
 
@@ -151,8 +154,8 @@ bisnode[, pers_exp_emp := personnel_exp / labor_avg]
 # MEASURE OF PERFORMANCE
 # return on asset / return on equity ... need to choose
 
-# Company performance
-bisnode[, comp_performance := profit_loss_year / share_eq] # can change ...
+# Company performance - ROCE - returnal on capital employed
+bisnode[, comp_performance := inc_bef_tax / (curr_assets + fixed_assets - curr_liab)] # can change ...
 
 # Industry performance
 bisnode[, ind_performance := mean(comp_performance), by = ind]
