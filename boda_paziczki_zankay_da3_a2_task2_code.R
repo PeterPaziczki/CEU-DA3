@@ -97,7 +97,7 @@ bisnode[, ceo_age := year - birth_year]
 bisnode <- bisnode[ceo_age >= min_CEO_age]
 
 # creating young_CEO binary variable
-bisnode$young_CEO <- as.numeric(bisnode$ceo_age <= young_CEO_max_age)
+bisnode[,"young_CEO"] <- as.numeric(bisnode[,ceo_age] <= young_CEO_max_age)
 
 # dropping industry NAs
 # isnode <- bisnode[ind != ""]
