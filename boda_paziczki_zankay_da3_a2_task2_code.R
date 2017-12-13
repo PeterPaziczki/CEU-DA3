@@ -82,14 +82,20 @@ min_comp_age <- 2
 ## CLEANING
 
 # Kepping columns that we need
-bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 'intang_assets', 'tang_assets', 'liq_assets', 'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 'share_eq', 'year', 'founded_year', 'ceo_count', 'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 'labor_avg', 'balsheet_notfullyear', 'exit_year')]
+bisnode <- bisnode_raw[,c('comp_id', 'begin', 'end', 'curr_assets', 'fixed_assets', 
+                          #'intang_assets', 'tang_assets', 'liq_assets', 
+                          'curr_liab', 'inc_bef_tax', 'personnel_exp', 'profit_loss_year', 'sales', 
+                          'share_eq', 'year', 'founded_year', 'ceo_count', 
+                          'female', 'birth_year', 'inoffice_days', 'gender', 'ind', 'ind2', 
+                          #'labor_avg', 
+                          'balsheet_notfullyear', 'exit_year', 'origin', 'region_m')]
 
 # Filtering for the year chosen
 bisnode <- bisnode[year == research_year]
 
 # dropping birth_years NAs
 bisnode <- bisnode[birth_year != ""]
-
+#bd: lost here ~ 4500. 
 # computing age
 bisnode[, ceo_age := year - birth_year]
 
@@ -101,9 +107,11 @@ bisnode[,"young_CEO"] <- as.numeric(bisnode[,ceo_age] <= young_CEO_max_age)
 
 ind2_list <- bisnode [,.N, by = ind2][N > 1000,][,ind2]
 bisnode <- bisnode [ind2 %in% ind2_list,]
+#bd lost here: ~1700
 
 # number of days CEO spent in office, dropping those who spent less then a quarter as CEOs
 bisnode <- bisnode[inoffice_days >= min_CEO_exp_days]
+#bd lost here ~1500
 
 # dropping CEOs that are under the age limit
 bisnode <- bisnode[ceo_age >= min_CEO_age]
@@ -112,16 +120,18 @@ bisnode <- bisnode[ceo_age >= min_CEO_age]
 # bisnode <- bisnode[labor_avg > min_employee]
 
 # dropping firms where average number of employees are NA
-bisnode <- bisnode[labor_avg != ""] # more than 40.000 NAs
+# bisnode <- bisnode[labor_avg != ""] # more than 40.000 NAs   #bd: agreed not to use labor_avg, as it would limit the sample
 
 # computing age
 bisnode[, comp_age := year - founded_year]
 
 # dropping firms that are too young
 bisnode <- bisnode[comp_age > min_comp_age]
+#bd ost here: ~2500
 
 # dropping firms that don't have a balance sheet for full year
 bisnode <- bisnode[balsheet_notfullyear == 0]
+#bd lost here: ~300
 
 # dropping those countries that have NAs in financial variables
 bisnode <- bisnode[inc_bef_tax != ""]
@@ -130,9 +140,9 @@ bisnode <- bisnode[curr_assets != ""]
 bisnode <- bisnode[curr_assets != 0]
 bisnode <- bisnode[fixed_assets != ""]
 bisnode <- bisnode[fixed_assets != 0]
-bisnode <- bisnode[tang_assets != ""]
-bisnode <- bisnode[tang_assets != 0]
-
+#bisnode <- bisnode[tang_assets != ""]   #bd: I think we do not use it
+#bisnode <- bisnode[tang_assets != 0]   #bd: I think we don use it
+#bd lost in above filters: ~3800
 # ====================================
 
 # INDUSTRY AVERAGES
@@ -193,13 +203,32 @@ pander(bisnode[, lapply(.SD, mean, na.rm = TRUE), by = list(ind2, comp_size_big,
 pander(bisnode[, list(avg_perforamnce = mean(comp_performance)), by = young_CEO])
 
 # ====================================
-lm (ceo_performance ~ inoffice_days, data = bisnode)
-summary (lm (ceo_performance ~ inoffice_days, data = bisnode))
-# coefficients is not only small 2 x 10^-5, but it is significant only at ~80%, so most likely there is no relationship
+# first round of variable selection
+
+summary (bisnode [, ceo_performance_persize])
+unique (bisnode [, region_m])
+summary (lm (ceo_performance_persize ~ inoffice_days, data = bisnode))
+summary (lm (ceo_performance_persize ~ ceo_count, data = bisnode))
+summary (lm (ceo_performance_persize ~ origin, data = bisnode))
+summary (lm (ceo_performance_persize ~ personnel_exp, data = bisnode))
+# coefficients is very small and/or the significance level is too low, so most likely there is no relationship
+summary (lm (ceo_performance_persize ~ region_m, data = bisnode))
 
 bisnode [, unique(gender)]
 #result: "male"   "mix"    "female"
 bisnode [, unique(female)]
 #result 0.00 0.50 1.00 0.33 0.67 0.25 0.29 0.17 0.20 0.40 0.60
 # proposal: have dom_gender variable as follows: female <= 0.33: => male, 0.33 < female =< 0.66: mix, 0.66 <= female: female
+
+### Setting up variables that do not exist:
+model <- bisnode [, .(assets = curr_assets + fixed_assets,   #probably log analysed
+                      ind2,
+                      ceo_age,
+                      ceo_performance_persize,   #probably log analysed
+                      comp_age,
+                      dom_gender = cut (female, c(-0.1, 0.33, 0.66, 1.1), labels = c('male', 'mix', 'female'))
+                      )]
+model [, .N, by = dom_gender]
+
+### Modell parameters:
 
