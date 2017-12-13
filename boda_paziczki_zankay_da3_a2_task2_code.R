@@ -95,7 +95,8 @@ bisnode <- bisnode[year == research_year]
 
 # dropping birth_years NAs
 bisnode <- bisnode[birth_year != ""]
-#bd: lost here ~ 4500. 
+#bd: lost here ~ 4500.
+
 # computing age
 bisnode[, ceo_age := year - birth_year]
 
@@ -107,6 +108,13 @@ bisnode[,"young_CEO"] <- as.numeric(bisnode[,ceo_age] <= young_CEO_max_age)
 
 ind2_list <- bisnode [,.N, by = ind2][N > 1000,][,ind2]
 bisnode <- bisnode [ind2 %in% ind2_list,]
+
+# 26 Manufacture of computer, electronic and optical products
+# 28 Manufacture of machinery and equipment n.e.c.
+# 33 Repair and installation of machinery and equipment
+# 55 Accommodation
+# 56 Food and beverage service activities
+
 #bd lost here: ~1700
 
 # number of days CEO spent in office, dropping those who spent less then a quarter as CEOs
@@ -122,7 +130,7 @@ bisnode <- bisnode[ceo_age >= min_CEO_age]
 # dropping firms where average number of employees are NA
 # bisnode <- bisnode[labor_avg != ""] # more than 40.000 NAs   #bd: agreed not to use labor_avg, as it would limit the sample
 
-# computing age
+# computing company age
 bisnode[, comp_age := year - founded_year]
 
 # dropping firms that are too young
@@ -143,6 +151,7 @@ bisnode <- bisnode[fixed_assets != 0]
 #bisnode <- bisnode[tang_assets != ""]   #bd: I think we do not use it
 #bisnode <- bisnode[tang_assets != 0]   #bd: I think we don use it
 #bd lost in above filters: ~3800
+
 # ====================================
 
 # INDUSTRY AVERAGES
@@ -150,9 +159,10 @@ bisnode <- bisnode[fixed_assets != 0]
 # Average number of employees by industries
 # pander(bisnode[, mean(labor_avg),by=ind2]) bd: to be removed as labor is unreliable
 # Adding average number of employees by industries to the table
-#bisnode[, ind_labor_avg := mean(labor_avg), by = ind2] bd: to be removed as labor is unreliable
+# bisnode[, ind_labor_avg := mean(labor_avg), by = ind2] bd: to be removed as labor is unreliable
 # Adding the size of company
 # bisnode$comp_size_big <- as.numeric(bisnode$labor_avg >= bisnode$ind_labor_avg) bd: to be removed as labor is unreliable, other measure for size to be defined
+
 bisnode <- bisnode [curr_assets + fixed_assets >=0,]
 bisnode [, size_third := quantile ((curr_assets + fixed_assets), 0.33), by = ind2]
 bisnode [, size_twothird := quantile ((curr_assets + fixed_assets), 0.66), by = ind2]
@@ -161,6 +171,7 @@ bisnode [, size_cat := cut (curr_assets + fixed_assets, c(
                             size_twothird [1], Inf),
                             labels = c("small", "medium", "big")),
                             by = ind2]
+
 # bisnode [, unique (size_twothird)] #bd: check
 # bisnode [, .N, by = size_cat] #bd: check
 
@@ -197,7 +208,7 @@ bisnode[, ceo_performance_persize := comp_performance / ind_performance_persize]
 # PLOTS
 
 # Average performance of companies by industries, firm size and by CEO (young or old)
-pander(bisnode[, lapply(.SD, mean, na.rm = TRUE), by = list(ind2, comp_size_big, young_CEO), .SDcols = c("comp_performance")])
+pander(bisnode[, lapply(.SD, mean, na.rm = TRUE), by = list(ind2, size_cat, young_CEO), .SDcols = c("comp_performance")])
 
 # Average company peformance per CEOs (young or old)
 pander(bisnode[, list(avg_perforamnce = mean(comp_performance)), by = young_CEO])
