@@ -316,6 +316,7 @@ BIC (lm_IndAll_op)
 BIC (lm_IndAll_up)
 # bd???: azt jelenti, hogy a felülteljesítőknél nem számít a mére, viszont az alulteljesítésnél meg nagyon?
 # hátha MOdel 3 megvilágosít
+
 ### Model 3: in order to be able to handle the complexity, we divide the model by industy and then by size
 ## ind = 26
 lm_ind26_op <- lm (log(ceo_performance_persize) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
@@ -339,7 +340,7 @@ model [ceo_performance_persize & D_ind2_26,.N]
 model [ceo_performance_persize & D_ind2_26 & ceo_age <= 40, .N]
 BIC (lm_ind26_op)
 BIC (lm_ind26_up)
-# just for fu, let us see in this segment if there is any relationship between age and success
+# just for fun, let us see in this segment if there is any relationship between age and success
 lm_ind26_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_26,])
 coeftest(lm_ind26_oplim, vcov=sandwich)
 #we can flip coins Seemingly in this indusrty segment (computer manufacturing) there is no any relationship
@@ -354,17 +355,17 @@ coeftest(lm_ind28_up, vcov=sandwich)
 model [ceo_performance_persize & D_ind2_28,.N]
 model [ceo_performance_persize & D_ind2_28 & ceo_age <= 40, .N]
 #any relation at all?
-lm_ind28_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_28,])
+lm_ind28_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_28 & D_size_L,])
 coeftest(lm_ind28_oplim, vcov=sandwich)
 
 ##basic relation test in other segments
-lm_ind33_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_33,])
+lm_ind33_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_33 & D_size_L,])
 coeftest(lm_ind33_oplim, vcov=sandwich)
 
-lm_ind55_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y, data = model [(ceo_performance_persize >0) & D_ind2_55,])
+lm_ind55_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y, data = model [(ceo_performance_persize >0) & D_ind2_55 & D_size_L,])
 coeftest(lm_ind55_oplim, vcov=sandwich)
 
-lm_ind56_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_56,])
+lm_ind56_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_56 & D_size_L,])
 coeftest(lm_ind56_oplim, vcov=sandwich)
 
 # per does not it matter per industry??????????????????????????????????
