@@ -227,7 +227,8 @@ model <- bisnode [, .(assets = curr_assets + fixed_assets,   #probably log analy
                       ceo_performance_persize,   #probably log analysed
                       comp_age,
                       dom_gender = cut (female, c(-0.1, 0.33, 0.66, 1.1), labels = c('male', 'mix', 'female')),
-                      size_cat
+                      size_cat,
+                      region_m
                       )]
 model [, .N, by = dom_gender]
 
