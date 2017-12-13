@@ -24,7 +24,7 @@ library(pander) # pander function makes tables have a nicer output
 
 # Checking and setting working directory
 getwd()
-setwd('/Users/User/Documents/R_projects/CEU-DA3')
+#setwd('/Users/User/Documents/R_projects/CEU-DA3')
 
 # Limiting the number of digits
 options(digits=2)
@@ -187,15 +187,23 @@ bisnode [, size_cat := cut (curr_assets + fixed_assets, c(
 # MEASURE OF PERFORMANCE
 # ROCE = EBIT / CAPITA Employed 
 
+bisnode <- bisnode [abs(curr_assets + fixed_assets - curr_liab) > 1,]   #there was one where we would divide by 0
 # Company performance - ROCE - returnal on capital employed
 bisnode[, comp_performance := inc_bef_tax / (curr_assets + fixed_assets - curr_liab)] 
+#boxplot (bisnode[ind2== 56, comp_performance])  #two very negative, we remove as it is not representative
+bisnode <- bisnode [comp_performance > -400]
 
 # Industry performance
 bisnode[, ind_performance := mean(comp_performance), by = ind2]
-#bisnode [, unique(ind_performance)] #checkpoint
+# bisnode [, ind_performance, by = ind2] #checkpoint
+# bisnode [, unique (ind_performance)] #checkpoint
+
 
 # CEO performance
 bisnode[, ceo_performance := comp_performance / ind_performance]
+#bisnode[,mean(ceo_performance), by = ind2]
+Mean_Perf <- bisnode [, mean (comp_performance)]         #overall average
+bisnode[, ceo_perfbase := comp_performance / Mean_Perf]  #ceo performance comapred to overall average performance
 
 #industry and CEO performance per size categories
 bisnode [, ind_performance_persize := mean (comp_performance),by = .(ind2, size_cat)]
@@ -235,6 +243,7 @@ bisnode [, unique(female)]
 model <- bisnode [, .(assets = curr_assets + fixed_assets,   #probably log analysed
                       ind2,
                       ceo_age,
+                      ceo_perfbase,
                       ceo_performance,
                       ceo_performance_persize,   #probably log analysed
                       comp_age,
@@ -277,58 +286,74 @@ model [ceo_age >40,.N]  #bd showing 70- 30 distribution  => not sure that in thi
 ### Model1 disregarding industries and sizes
 #control variables: ceo_performance, D_dom_gender_Fem, D_dom_gender_Mix, D_region_W, D_region_E, D_CEO_y, comp_age
 
-lm_All_op <- lm (log(ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
-              D_region_E + D_region_W + comp_age * D_region_E + comp_age * D_region_W, data = model [ceo_performance >0,])
+lm_All_op <- lm (log(ceo_perfbase) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
+              D_region_E + D_region_W + comp_age * D_region_E + comp_age * D_region_W, data = model [ceo_perfbase >0,])
 coeftest(lm_All_op, vcov=sandwich)
-lm_All_up <- lm (log(-ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
-                D_region_E + D_region_W + comp_age * D_region_E + comp_age * D_region_W, data = model [ceo_performance <0,])
 
+lm_All_up <- lm (log(-ceo_perfbase) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
+                D_region_E + D_region_W + comp_age * D_region_E + comp_age * D_region_W, data = model [ceo_perfbase <0,])
 coeftest(lm_All_up, vcov=sandwich)
 BIC (lm_All_op)
 BIC (lm_All_up)
-#it looks that for underperfroming companies East makes no difference to Central, while for overperformers with 95% confidence there is still
-# let us change the model by not differentiating between East and Central, only between West adn the rest
-lm2_All_op <- lm (log(ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
-                   D_region_W + comp_age * D_region_W, data = model [ceo_performance >0,])
+
+
+#it looks that no dependancy on gender, nor difference between East and Central region
+lm2_All_op <- lm (log(ceo_perfbase) ~ D_CEO_y + comp_age +
+                    D_region_W + comp_age * D_region_W, data = model [ceo_perfbase >0,])
 coeftest(lm2_All_op, vcov=sandwich)
-lm2_All_up <- lm (log(-ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
-                   D_region_W + comp_age * D_region_W, data = model [ceo_performance <0,])
+lm2_All_up <- lm (log(-ceo_perfbase) ~ D_CEO_y + comp_age +
+                    D_region_W + comp_age * D_region_W, data = model [ceo_perfbase <0,])
 
 coeftest(lm2_All_up, vcov=sandwich)
+
+
 BIC (lm2_All_op)
 BIC (lm2_All_up)
+
+#################### TO BE REMOVED BEGIN
 # did not impact relevant coefficients, but suggests that there is no regional difference ???
-lm3_All_op <- lm (log(ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age,
-                    data = model [ceo_performance >0,])
+lm3_All_op <- lm (log(ceo_perfbase) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age,
+                    data = model [ceo_perfbase >0,])
 coeftest(lm3_All_op, vcov=sandwich)
-lm3_All_up <- lm (log(-ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age,
-                  data = model [ceo_performance <0,])
+lm3_All_up <- lm (log(-ceo_perfbase) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age,
+                  data = model [ceo_perfbase <0,])
 
 coeftest(lm3_All_up, vcov=sandwich)
 BIC (lm3_All_op)
 BIC (lm3_All_up)
 
 # does it mean, that we should forget regional differences?
-lmtmp <- lm (log(ceo_performance) ~ D_region_W, data = model[ceo_performance >0,])
+lmtmp <- lm (log(ceo_perfbase) ~ D_region_W, data = model[ceo_perfbase >0,])
 coeftest (lmtmp, vcov = sandwich)
 #yes, we can safely drop this
 #so the model is lm_3_All_Up
+################## TO BE REMOVED END
 
 ### Model2: disregarding industries, including sizes
 #control variables: ceo_performance, D_dom_gender_Fem, D_dom_gender_Mix, D_size_M, D_size_L, D_CEO_y, comp_age
 #bd??? mit csináljunk a ceo_performance-el, amit per size per industry definiáltunk
-lm_IndAll_op <- lm (log(ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
-                   D_size_M + D_size_L + comp_age * D_size_M + comp_age * D_size_L, data = model [ceo_performance >0,])
+lm_IndAll_op <- lm (log(ceo_perfbase) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
+                   D_size_M + D_size_L + comp_age * D_size_M + comp_age * D_size_L, data = model [ceo_perfbase >0,])
 coeftest(lm_IndAll_op, vcov=sandwich)
-lm_IndAll_up <- lm (log(-ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
-                   D_size_M + D_size_L + comp_age * D_size_M + comp_age * D_size_L, data = model [ceo_performance <0,])
+lm_IndAll_up <- lm (log(-ceo_perfbase) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
+                   D_size_M + D_size_L + comp_age * D_size_M + comp_age * D_size_L, data = model [ceo_perfbase <0,])
 coeftest(lm_IndAll_up, vcov=sandwich)
 BIC (lm_IndAll_op)
 BIC (lm_IndAll_up)
 # bd???: azt jelenti, hogy a felülteljesítőknél nem számít a mére, viszont az alulteljesítésnél meg nagyon?
 # hátha MOdel 3 megvilágosít
 
-### Model 3: in order to be able to handle the complexity, we divide the model by industy and then by size
+
+### Model3: disregarding size, looking at industries
+lm_ind26_op <- lm (log(ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
+                      D_size_M + D_size_L + comp_age * D_size_M + comp_age * D_size_L, data = model [ceo_performance >0 & D_ind2_26,])
+coeftest(lm_ind26_op, vcov=sandwich)
+lm_ind26_up <- lm (log(-ceo_performance) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
+                      D_size_M + D_size_L + comp_age * D_size_M + comp_age * D_size_L, data = model [ceo_performance <0 & D_ind2_26,])
+coeftest(lm_ind26_up, vcov=sandwich)
+
+
+### Model 4: in order to be able to handle the complexity, we divide the model by industy and then by size
 ## ind = 26
 lm_ind26_op <- lm (log(ceo_performance_persize) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
                       D_size_M + D_size_L + comp_age * D_size_M + comp_age * D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_26,])
@@ -354,7 +379,7 @@ BIC (lm_ind26_up)
 # just for fun, let us see in this segment if there is any relationship between age and success
 lm_ind26_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size_L, data = model [(ceo_performance_persize >0) & D_ind2_26,])
 coeftest(lm_ind26_oplim, vcov=sandwich)
-#we can flip coins Seemingly in this indusrty segment (computer manufacturing) there is no any relationship
+
 
 ##ind = 28
 lm_ind28_op <- lm (log(ceo_performance_persize) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +
@@ -380,3 +405,24 @@ lm_ind56_oplim <- lm (log(ceo_performance_persize) ~ D_CEO_y + D_size_M + D_size
 coeftest(lm_ind56_oplim, vcov=sandwich)
 
 # per does not it matter per industry??????????????????????????????????
+
+################ SOME PLOTS TO SEE ABNORMALITIES
+
+ggplot (data = model [size_cat =='small' & D_ind2_26,], aes (x = log(assets), y= log(ceo_performance_persize))) + geom_point() + geom_smooth ()
+ggplot (data = model [size_cat =='medium' & D_ind2_26,], aes (x = log(assets), y= log(ceo_performance_persize))) + geom_point() + geom_smooth ()
+ggplot (data = model [size_cat =='big' & D_ind2_26,], aes (x = log(assets), y= log(ceo_performance_persize))) + geom_point() + geom_smooth ()
+ggplot (data = model [D_ind2_26 == TRUE,], aes (x = log(assets), y= log(ceo_performance))) + geom_point() + geom_smooth ()
+ggplot (data = model [,], aes (x = log(assets), y= log(ceo_perfbase))) + geom_point() + geom_smooth ()
+ggplot (data = model [size_cat == 'big',], aes(log(assets))) + geom_histogram()
+ggplot (data = model [D_ind2_26 == TRUE,], aes(log(ceo_performance))) + geom_histogram()
+ggplot (data = model [,], aes(log(ceo_perfbase))) + geom_histogram()
+ggplot (data = bisnode [,], aes(log(comp_performance))) + geom_histogram()
+ggplot (data = model [ind2==55,], aes(log(ceo_performance))) + geom_histogram()
+ggplot (data = model [ceo_performance >0 & D_ind2_26,], aes (log(ceo_performance))) + geom_histogram() 
+ggplot (data = model [ceo_performance >0 & D_ind2_28,], aes (log(ceo_performance))) + geom_histogram() 
+ggplot (data = model [ceo_performance >0 & D_ind2_33,], aes (log(ceo_performance))) + geom_histogram() 
+ggplot (data = model [ceo_performance >0 & D_ind2_55,], aes (log(ceo_performance))) + geom_histogram() 
+ggplot (data = model [ceo_performance >0 & D_ind2_56,], aes (log(ceo_performance))) + geom_histogram() 
+ggplot (data = model [ceo_performance >0], aes (log(ceo_performance))) + geom_histogram () + facet_wrap (~ind2)
+
+ggplot (data = model [ceo_performance_persize >0 & D_ind2_26,], aes (log(ceo_performance_persize))) + geom_histogram() +facet_wrap (~size_cat)
