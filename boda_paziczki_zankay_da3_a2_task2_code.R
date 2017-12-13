@@ -245,7 +245,7 @@ model <- bisnode [, .(assets = curr_assets + fixed_assets,   #probably log analy
 model [, .N, by = dom_gender]
 
 ###################### Modell parameters:
-### in order not to get to complexity that is not possible to hande, first attempt is to slice the population per industry segments.
+
 ### creating binaries
 model [, D_dom_gender_Fem := (dom_gender == 'female')]
 model [, D_dom_gender_Mix := (dom_gender == 'mix')]
