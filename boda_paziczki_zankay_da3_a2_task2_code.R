@@ -109,11 +109,21 @@ bisnode[,"young_CEO"] <- as.numeric(bisnode[,ceo_age] <= young_CEO_max_age)
 ind2_list <- bisnode [,.N, by = ind2][N > 1000,][,ind2]
 bisnode <- bisnode [ind2 %in% ind2_list,]
 
+# Creating a table for industry names
 # 26 Manufacture of computer, electronic and optical products
 # 28 Manufacture of machinery and equipment n.e.c.
 # 33 Repair and installation of machinery and equipment
 # 55 Accommodation
 # 56 Food and beverage service activities
+
+industries <- data.table(industry_ID=c(26,28,33,55,56), industry_name=c("Manufacture of computer, electronic and optical products",
+                                             "Manufacture of machinery and equipment n.e.c.", "Repair and installation of machinery and equipment",
+                                             "Accommodation", "Food and beverage service activities"))
+
+## Enhancing the data with industry names
+setkey(industries, `industry_ID`)
+setkey(bisnode, `ind2`)
+bisnode <- bisnode[industries, nomatch=0] #inner join DT syntax
 
 #bd lost here: ~1700
 
