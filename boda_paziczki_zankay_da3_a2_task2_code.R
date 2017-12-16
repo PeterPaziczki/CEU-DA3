@@ -164,6 +164,24 @@ bisnode <- bisnode[fixed_assets != 0]
 
 # ====================================
 
+# CHECKING VARIABLES
+
+ggplot(bisnode, aes(inc_bef_tax)) + geom_histogram()
+boxplot(bisnode$inc_bef_tax,horizontal=TRUE,axes=FALSE,outline=FALSE)
+
+ggplot(bisnode, aes(curr_assets)) + geom_histogram()
+ggplot(bisnode, aes(fixed_assets)) + geom_histogram()
+ggplot(bisnode, aes(curr_liab)) + geom_histogram()
+ggplot(bisnode, aes(profit_loss_year)) + geom_histogram()
+ggplot(bisnode, aes(share_eq)) + geom_histogram()
+
+ggplot(bisnode, aes(ceo_age)) + geom_histogram()
+ggplot(bisnode, aes(comp_age)) + geom_histogram()
+table(bisnode$industry_name)
+ggplot(bisnode, aes(sales)) + geom_histogram()
+
+# ====================================
+
 # INDUSTRY AVERAGES
 
 # Average number of employees by industries
@@ -211,15 +229,16 @@ bisnode[, ind_performance := mean(comp_performance), by = ind2]
 
 # CEO performance
 bisnode[, ceo_performance := comp_performance / ind_performance]
+
 #bisnode[,mean(ceo_performance), by = ind2]
 Mean_Perf <- bisnode [, mean (comp_performance)]         #overall average
 bisnode[, ceo_perfbase := comp_performance / Mean_Perf]  #ceo performance comapred to overall average performance
 
 #industry and CEO performance per size categories
 bisnode [, ind_performance_persize := mean (comp_performance),by = .(ind2, size_cat)]
+
 #bisnode [, unique(ind_performance_persize), by= .(ind2, size_cat)][order(ind2,size_cat),] #checkpoint
 bisnode[, ceo_performance_persize := comp_performance / ind_performance_persize]
-
 
 # ====================================
 
@@ -230,6 +249,16 @@ pander(bisnode[, lapply(.SD, mean, na.rm = TRUE), by = list(ind2, size_cat, youn
 
 # Average company peformance per CEOs (young or old)
 pander(bisnode[, list(avg_perforamnce = mean(comp_performance)), by = young_CEO])
+
+# CEO performance
+ggplot(bisnode, aes(ceo_performance)) + geom_histogram()
+
+#ceo performance comapred to overall average performance
+ggplot(bisnode, aes(ceo_perfbase)) + geom_histogram()
+
+#industry and CEO performance per size categories
+ggplot(bisnode, aes(ind_performance_persize)) + geom_histogram() + facet_wrap(size_cat~ind2)
+ggplot(bisnode, aes(ceo_performance_persize)) + geom_histogram() + facet_wrap(size_cat~ind2)
 
 # ====================================
 # first round of variable selection
@@ -436,3 +465,33 @@ ggplot (data = model [ceo_performance >0 & D_ind2_56,], aes (log(ceo_performance
 ggplot (data = model [ceo_performance >0], aes (log(ceo_performance))) + geom_histogram () + facet_wrap (~ind2)
 
 ggplot (data = model [ceo_performance_persize >0 & D_ind2_26,], aes (log(ceo_performance_persize))) + geom_histogram() +facet_wrap (~size_cat)
+
+# ====================================
+
+# Peter's sandbox
+
+# Comp_performance is just one huge peak
+bisnode <- bisnode [comp_performance > -10]
+bisnode <- bisnode [comp_performance < 10]
+summary(bisnode$comp_performance)
+ggplot(bisnode, aes(comp_performance)) + geom_histogram()
+boxplot(bisnode$comp_performance)
+
+# Dropping outliers - creating a function
+remove_outliers <- function(x, na.rm = TRUE) {
+  qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm)
+  H <- 1.5 * IQR(x, na.rm = na.rm)
+  y <- x
+  y[x < (qnt[1] - H)] <- NA
+  y[x > (qnt[2] + H)] <- NA
+  y
+}
+
+# Dropping outliers - using the function
+ggplot(bisnode, aes(comp_performance)) + geom_histogram()
+bisnode <- subset(bisnode, comp_performance %in% remove_outliers(bisnode$comp_performance))
+ggplot(bisnode, aes(comp_performance)) + geom_histogram()
+
+# Dropping outliers - interesting package
+#install.packages("outliers")
+#library(outliers)
