@@ -489,6 +489,8 @@ coeftest (lm_IndSizeX_up, vcov = sandwich)
 
 BIC(lm_IndSizeX_up)
 
+################################# Model7 Péter test #####################################
+
 # ====================================
 
 # PLOTS
