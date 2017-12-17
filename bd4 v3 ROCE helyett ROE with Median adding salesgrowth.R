@@ -164,8 +164,6 @@ bisnode <- bisnode[share_eq != 0]
 #bisnode [, .N] returns 16362 when not removing slaes_pastyear =0
 # in this version we removed sales_pastyear == 0, here bisnode [, .N] returns 12907 
 
-
-
 ###  Creating 3 company size categories based on Assets value 
 bisnode [, size_third := quantile ((curr_assets + fixed_assets), 0.33), by = ind2]
 bisnode [, size_twothird := quantile ((curr_assets + fixed_assets), 0.66), by = ind2]
@@ -258,6 +256,7 @@ model [, D_region_E := (region_m == 'East')]
 model [, D_region_W := (region_m == 'West')]
 model <- model [region_m != ""]
 #bd: here we lost 35 samples
+#pp: I dropped them in row 167
 
 model [, D_CEO_y := (ceo_age <= 40)]
 model [, D_CEO_o := (ceo_age > 40)]
@@ -326,7 +325,7 @@ coeftest(lm_IndAll_up, vcov=sandwich)
 BIC (lm_IndAll_op)
 BIC (lm_IndAll_up)
 
-
+stargazer(list(lm_IndAll_op, lm_IndAll_up), digits=3, type="text", out="ROE-model_2.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 ################################# Model3 REMOVED ##########################################
 
@@ -450,33 +449,36 @@ model [, ceo_perfS := comp_performance / sizeS_median]
 lm_sizeS_op <- lm (log(ceo_perfS) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [ceo_perfS >0 & D_size_S == TRUE,])
 coeftest (lm_sizeS_op, vcov = sandwich)
+
 lm_sizeS_up <- lm (log(-ceo_perfS) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [ceo_perfS <0 & D_size_S == TRUE,])
 coeftest (lm_sizeS_up, vcov = sandwich)
 
+stargazer(list(lm_sizeS_op, lm_sizeS_up), digits=3, type="text", out="ROE-model_5b_sizeS.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 sizeM_median <- quantile (model [D_size_M == TRUE, comp_performance],0.5)
 model [, ceo_perfM := comp_performance / sizeM_median]
 lm_sizeM_op <- lm (log(ceo_perfM) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [ceo_perfM >0 & D_size_M == TRUE,])
 coeftest (lm_sizeM_op, vcov = sandwich)
+
 lm_sizeM_up <- lm (log(-ceo_perfM) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [ceo_perfM <0 & D_size_M == TRUE,])
 coeftest (lm_sizeM_up, vcov = sandwich)
 
+stargazer(list(lm_sizeM_op, lm_sizeM_up), digits=3, type="text", out="ROE-model_5b_sizeM.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 sizeL_median <- quantile (model [D_size_L == TRUE, comp_performance],0.5)
 model [, ceo_perfL := comp_performance / sizeL_median]
 lm_sizeL_op <- lm (log(ceo_perfL) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [ceo_perfL >0 & D_size_L == TRUE,])
 coeftest (lm_sizeL_op, vcov = sandwich)
+
 lm_sizeL_up <- lm (log(-ceo_perfL) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [ceo_perfL <0 & D_size_L == TRUE,])
 coeftest (lm_sizeL_up, vcov = sandwich)
 
-
-
-
+stargazer(list(lm_sizeL_op, lm_sizeL_up), digits=3, type="text", out="ROE-model_5b_sizeL.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 ### Maybe this is why we can find significant correlation in the overall population, but not in all size segments.
 ### Too little number of young CEOs
@@ -517,18 +519,22 @@ cor (model[,salesgrowth_perc], model[,ceo_perfbase])
 #interaction where it makes sense
 #control variables: ceo_performance, D_dom_gender_Fem, D_dom_gender_Mix, D_size_M, D_size_L, D_CEO_y
 
-lm_IndAll_sop <- lm (log(salesgrowth_perc) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + 
-                      #  comp_age +
+lm_IndAll_sop <- lm (log(salesgrowth_perc) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y +
+                       comp_age +
                       D_size_M + D_size_L ,
                     #  comp_age * D_size_M + comp_age * D_size_L, 
                     data = model [salesgrowth_perc >0,])
 coeftest(lm_IndAll_sop, vcov=sandwich)
-lm_IndAll_sup <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + 
-                      # comp_age +
-                      D_size_M + D_size_L, 
+
+stargazer(lm_IndAll_sop, digits=3, type="text", out="sales_growth-model_2-1.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
+
+lm_IndAll_sup <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + D_dom_gender_Mix + D_CEO_y + comp_age +D_size_M + D_size_L, 
                     # + comp_age * D_size_M + comp_age * D_size_L, 
                     data = model [salesgrowth_perc <0,])
 coeftest(lm_IndAll_sup, vcov=sandwich)
+
+stargazer(lm_IndAll_sup, digits=3, type="text", out="sales_growth-model_2-2.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
+
 BIC (lm_IndAll_sop)
 BIC (lm_IndAll_sup)
 
@@ -537,17 +543,27 @@ BIC (lm_IndAll_sup)
 #less control variables (selection based on assumption of importance) region excluded based on above
 # no interaction
 #control variables: see below
-lm_IndSize_sop <- lm (log(salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + D_ind2_56 + D_ind2_28 + D_ind2_33+ D_ind2_55+ 
+lm_IndSize_sop <- lm (log(salesgrowth_perc) ~ D_dom_gender_Fem + comp_age + D_CEO_y + D_ind2_56 + D_ind2_28 + D_ind2_33+ D_ind2_55+ 
                        D_size_M + D_size_L, data = model [salesgrowth_perc >0,])
 coeftest (lm_IndSize_sop, vcov = sandwich)
 
+stargazer(lm_IndSize_sop, digits=3, type="text", out="sales_growth-model_4-1.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
+
 BIC(lm_IndSize_sop)
 
-lm_IndSize_sup <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + D_ind2_56 + D_ind2_28 + D_ind2_33+ D_ind2_55+
+lm_IndSize_sup <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + comp_age + D_CEO_y + D_ind2_56 + D_ind2_28 + D_ind2_33+ D_ind2_55+
                        D_size_M + D_size_L, data = model [salesgrowth_perc <0,])
 coeftest (lm_IndSize_sup, vcov = sandwich)
 
+stargazer(lm_IndSize_sup, digits=3, type="text", out="sales_growth-model_4-2.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
+
 BIC(lm_IndSize_sup)
+
+# Stargazer summing model 2 and 4
+
+stargazer(list(lm_IndAll_sop, lm_IndSize_sop), digits=3, type="text", out="sales_growth-model_2-4-1.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
+
+stargazer(list(lm_IndAll_sup, lm_IndSize_sup), digits=3, type="text", out="sales_growth-model_2-4-2.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 ################################# Model5 size and indusrty slice attempt #####################################
 ### slicing per ind2
@@ -607,6 +623,7 @@ coeftest (lm_sizeS_ops, vcov = sandwich)
 lm_sizeS_ups <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [salesgrowth_perc <0 & D_size_S == TRUE,])
 coeftest (lm_sizeS_ups, vcov = sandwich)
+stargazer(list(lm_sizeS_ops, lm_sizeS_ups), digits=3, type="text", out="sales_growth-model_5b_sizeS.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 lm_sizeM_ops <- lm (log(salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [salesgrowth_perc >0 & D_size_M == TRUE,])
@@ -614,6 +631,7 @@ coeftest (lm_sizeM_ops, vcov = sandwich)
 lm_sizeM_ups <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [salesgrowth_perc <0 & D_size_M == TRUE,])
 coeftest (lm_sizeM_ups, vcov = sandwich)
+stargazer(list(lm_sizeM_ops, lm_sizeM_ups), digits=3, type="text", out="sales_growth-model_5b_sizeM.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 lm_sizeL_ops <- lm (log(salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [salesgrowth_perc >0 & D_size_L == TRUE,])
@@ -621,7 +639,7 @@ coeftest (lm_sizeL_ops, vcov = sandwich)
 lm_sizeL_ups <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + 
                      D_ind2_26 + D_ind2_28 + D_ind2_33 + D_ind2_55, data = model [salesgrowth_perc <0 & D_size_L == TRUE,])
 coeftest (lm_sizeL_ups, vcov = sandwich)
-
+stargazer(list(lm_sizeL_ops, lm_sizeL_ups), digits=3, type="text", out="sales_growth-model_5b_sizeL.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
 
 ### Maybe this is why we can find significant correlation in the overall population, but not in all size segments.
 ### Too little number of young CEOs
@@ -652,7 +670,7 @@ coeftest (lm_IndSizeX_ups, vcov = sandwich)
 
 BIC(lm_IndSizeX_ups)
 
-################################# Plots for technical #####################################
+################################# Plots for technical report #####################################
 
 # ====================================
 
@@ -662,7 +680,7 @@ BIC(lm_IndSizeX_ups)
 freq(bisnode$young_CEO)
 
 # CEO age
-ggplot(bisnode, aes(ceo_age)) + geom_histogram() +
+ggplot(model, aes(ceo_age)) + geom_histogram() +
   ggtitle(labs(title = "Histogram of CEO age", x = "Age of CEOs", y = "Count"))
 pander(summary(bisnode$ceo_age))
 CrossTable(bisnode$young_CEO, bisnode$ind2)
@@ -702,14 +720,23 @@ pander(summary(bisnode$sales_pastyear))
 pander(summary(bisnode$salesgrowth_perc))
 # ggplot(bisnode, aes(salesgrowth_perc)) + geom_histogram() + facet_wrap(~ ind2)
 
-
 # companies
 bisnode [sales == 0,.N, by = ind2]
+bisnode [,.N, by = size_cat]
 bisnode [,.N, by = list(ind2, size_cat)]
 CrossTable(bisnode$ind2, bisnode$size_cat)
 CrossTable(bisnode$young_CEO, bisnode$size_cat)
 ggplot(bisnode, aes(ceo_age)) + geom_histogram() + facet_wrap(~ size_cat) +
   ggtitle(labs(title = "Histogram of CEO age across company sizes", x = "Age of CEOs", y = "Count"))
+
+# comp_age
+pander(summary(model$comp_age))
+
+# Gender
+model[,.N, by = dom_gender]
+
+# Origin
+model[,.N, by = origin]
 
 # comp_performance
 summary(bisnode$comp_performance)
@@ -831,3 +858,8 @@ ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
   geom_point(size=1.5, aes(colour=factor(ceo_count))) + geom_smooth(method="lm", colour="navy") +
   ggtitle(labs(title = "Scatterplot of sales growth by number of CEOs in management", x = "Age of CEOs", y = "Sales growth")) +
   scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1", "navy", "black", "orange"))
+
+# Colours for Legend
+# "#66CC00","#FFFF33","#F8766D","#00BFC4"
+
+bisnode[,median(comp_performance)]
