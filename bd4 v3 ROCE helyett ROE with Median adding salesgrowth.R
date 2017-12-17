@@ -119,9 +119,11 @@ bisnode <- bisnode[ceo_age >= min_CEO_age]
 # creating young_CEO binary variable
 bisnode[,"young_CEO"] <- as.numeric(bisnode[,ceo_age] <= young_CEO_max_age)
 #dropping those samples that belong to an industry that has less than 1000 samples
-ind2_list <- bisnode [,.N, by = ind2][N > 900,][,ind2]   #here I had to change limit value to 900, otherwise we would loose ind2 = 26 (after dropping sales =0)
+ind2_list <- bisnode [,.N, by = ind2][N > 900,][,ind2]   #here I had to change limit value to 900,
+# otherwise we would loose ind2 = 26 (after dropping sales =0)
 bisnode <- bisnode [ind2 %in% ind2_list,]
 bisnode [,.N, by = ind2]
+
 # 26 Manufacture of computer, electronic and optical products
 # 28 Manufacture of machinery and equipment n.e.c.
 # 33 Repair and installation of machinery and equipment
@@ -505,103 +507,6 @@ coeftest (lm_IndSizeX_up, vcov = sandwich)
 
 BIC(lm_IndSizeX_up)
 
-################################# Model7 Péter test #####################################
-
-# ====================================
-
-# PLOTS
-
-# Young CEO
-freq(bisnode$young_CEO)
-pander(CrossTable(bisnode$young_CEO, bisnode$ind2))
-
-# CEO age
-pander(summary(bisnode$ceo_age))
-ggplot(bisnode, aes(ceo_age)) + geom_histogram() +
-  ggtitle(labs(title = "Histogram of CEO age", x = "Age of CEOs", y = "Count"))
-ggplot(bisnode, aes(young_CEO)) + geom_histogram() + facet_wrap(~ ind2) +
-  ggtitle(labs(title = "Histogram of CEO binary variable accross industries", x = "CEO binary variable", y = "Count"))
-CrossTable(bisnode$young_CEO, bisnode$ind2)
-ggplot(bisnode, aes(ceo_age)) + geom_histogram() + facet_wrap(~ ind2) +
-  ggtitle(labs(title = "Histogram of CEO age accross industries", x = "Age of CEOs", y = "Count"))
-
-# inc_bef_tax
-pander(summary(bisnode$inc_bef_tax))
-ggplot(bisnode, aes(inc_bef_tax)) + geom_histogram() + facet_wrap(~ ind2)
-
-#profit_loss_year
-pander(summary(bisnode$profit_loss_year))
-ggplot(bisnode, aes(profit_loss_year)) + geom_histogram() + facet_wrap(~ ind2)
-
-# share_eq
-pander(summary(bisnode$share_eq))
-ggplot(bisnode, aes(share_eq)) + geom_histogram() + facet_wrap(~ ind2)
-
-ggplot(data = bisnode, aes(x=ceo_age, y=ceo_perfbase)) +
-  geom_point(colour="orange") +
-  geom_smooth(method="lm", colour="navy") +
-  ggtitle(labs(title = "Scatterplot age and base performance of CEOs", x = "Age of CEOs", y = "Base performance of CEOs"))
-
-# companies
-bisnode [,.N, by = ind2]
-bisnode [,.N, by = list(ind2, size_cat)]
-CrossTable(bisnode$ind2, bisnode$size_cat)
-CrossTable(bisnode$young_CEO, bisnode$size_cat)
-ggplot(bisnode, aes(ceo_age)) + geom_histogram() + facet_wrap(~ size_cat) +
-  ggtitle(labs(title = "Histogram of CEO age across company sizes", x = "Age of CEOs", y = "Count"))
-
-# comp_performance
-summary(bisnode$comp_performance)
-ggplot(bisnode, aes(comp_performance)) + geom_histogram() + facet_wrap(~ size_cat) +
-  ggtitle(labs(title = "Histogram of company performance across company sizes", x = "Company peformance", y = "Count"))
-ggplot(bisnode, aes(log(comp_performance))) + geom_histogram() + facet_wrap(~ size_cat) +
-  ggtitle(labs(title = "Histogram of log company performance across company sizes", x = "Log of company performance", y = "Count"))
-
-# ggplot(data = bisnode, aes(x=ceo_age, y=comp_performance)) +
-#  geom_point(colour="orange") +
-#  geom_smooth(method="lm", colour="navy") +
-#  ggtitle(labs(title = "Scatterplot of comp_performance CEO age", x = "Age of CEOs", y = "Company performance"))
-# ggplot(data = bisnode, aes(x=ceo_age, y=ceo_perfbase)) +
-#  geom_point(colour="orange") +
-#  geom_smooth(method="lm", colour="navy") +
-#  ggtitle(labs(title = "Scatterplot of CEO performance on CEO age", x = "Age of CEOs", y = "CEO performance"))
-
-# ggplot(data = bisnode, aes(x=ceo_age, y=comp_performance)) +
-#  geom_point(colour="orange") +
-#  geom_smooth(method="lm", colour="navy") + facet_wrap(~size_cat) +
-#  ggtitle(labs(title = "Scatterplot of company performance on CEO age", x = "Age of CEOs", y = "CEO performance"))
-ggplot(data = bisnode, aes(x=ceo_age, y=ceo_perfbase)) +
-  geom_point(colour="orange") +
-  geom_smooth(method="lm", colour="navy") + facet_wrap(~size_cat) +
-  ggtitle(labs(title = "Scatterplot of CEO performance on CEO age", x = "Age of CEOs", y = "CEO performance"))
-
-# ggplot(data = bisnode, aes(x=comp_age, y=comp_performance)) +
-#  geom_point(colour="orange") +
-#  geom_smooth(method="lm", colour="navy") + facet_wrap(~size_cat) +
-#  ggtitle(labs(title = "Scatterplot of company performance on company age", x = "Age of companies", y = "Company performance"))
-
-# CEO performance
-bisnode[, mean(ceo_perfbase), by = young_CEO]
-bisnode[, mean(ceo_perfbase), by = list(size_cat, young_CEO)]
-bisnode[, mean(ceo_perfbase), by = list(ind2, young_CEO)]
-bisnode[, median(ceo_perfbase), by = young_CEO]
-bisnode[, median(ceo_perfbase), by = list(size_cat, young_CEO)]
-ggplot(bisnode, aes(ceo_perfbase)) + geom_histogram() + facet_wrap(~ size_cat) +
-  ggtitle(labs(title = "Histogram of ceo performance across company sizes", x = "CEO peformance", y = "Count"))
-ggplot(bisnode, aes(log(ceo_perfbase))) + geom_histogram() + facet_wrap(~ size_cat) +
-  ggtitle(labs(title = "Histogram of log CEO performance across company sizes", x = "log of CEO peformance", y = "Count"))
-
-# 26 Manufacture of computer, electronic and optical products
-# 28 Manufacture of machinery and equipment n.e.c.
-# 33 Repair and installation of machinery and equipment
-# 55 Accommodation
-# 56 Food and beverage service activities
-
-
-
-
-
-
 ########################### SALESGROWTH_PERC MODELS #######################################
 cor (model[,salesgrowth_perc], model[,ceo_perfbase])
 ## It looks that the two do not really correlate
@@ -746,3 +651,183 @@ lm_IndSizeX_ups <- lm (log(-salesgrowth_perc) ~ D_dom_gender_Fem + D_CEO_y + D_i
 coeftest (lm_IndSizeX_ups, vcov = sandwich)
 
 BIC(lm_IndSizeX_ups)
+
+################################# Plots for technical #####################################
+
+# ====================================
+
+# PLOTS
+
+# Young CEO
+freq(bisnode$young_CEO)
+
+# CEO age
+ggplot(bisnode, aes(ceo_age)) + geom_histogram() +
+  ggtitle(labs(title = "Histogram of CEO age", x = "Age of CEOs", y = "Count"))
+pander(summary(bisnode$ceo_age))
+CrossTable(bisnode$young_CEO, bisnode$ind2)
+bisnode [,.N, by = list(ind2, size_cat)] # number of companies by industries
+
+# ggplot(bisnode, aes(young_CEO)) + geom_histogram() + facet_wrap(~ ind2) +
+#  ggtitle(labs(title = "Histogram of CEO binary variable accross industries", x = "CEO binary variable", y = "Count"))
+CrossTable(bisnode$young_CEO, bisnode$ind2)
+ggplot(bisnode, aes(ceo_age)) + geom_histogram() + facet_wrap(~ ind2) +
+  ggtitle(labs(title = "Histogram of CEO age accross industries", x = "Age of CEOs", y = "Count"))
+
+# inc_bef_tax
+pander(summary(bisnode$inc_bef_tax))
+ggplot(bisnode, aes(inc_bef_tax)) + geom_histogram() + facet_wrap(~ ind2)
+
+#profit_loss_year
+pander(summary(bisnode$profit_loss_year))
+bisnode[,mean(profit_loss_year), by = ind2]
+bisnode[,mean(profit_loss_year), by = size_cat]
+#ggplot(bisnode, aes(profit_loss_year)) + geom_histogram() + facet_wrap(~ ind2)
+#ggplot(bisnode, aes(profit_loss_year)) + geom_histogram() + facet_wrap(~ size_cat)
+ggplot(bisnode, aes(log(profit_loss_year))) + geom_histogram() + facet_wrap(~ ind2) +
+  ggtitle(labs(title = "Histogram of log profit_loss_year across industries", x = "Log of net profit (profit_loss_year)", y = "Count"))
+ggplot(bisnode, aes(log(profit_loss_year))) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of log profit_loss_year across company sizes", x = "Log of net profit (profit_loss_year)", y = "Count"))
+
+# share_eq
+pander(summary(bisnode$share_eq))
+ggplot(bisnode, aes(log(share_eq))) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of log profit_loss_year across company sizes", x = "Log of net profit (profit_loss_year)", y = "Count"))
+ggplot(bisnode, aes(log(share_eq))) + geom_histogram() + facet_wrap(~ ind2) +
+  ggtitle(labs(title = "Histogram of log profit_loss_year across industries", x = "Log of net profit (profit_loss_year)", y = "Count"))
+
+# sales
+pander(summary(bisnode$sales))
+pander(summary(bisnode$sales_pastyear))
+pander(summary(bisnode$salesgrowth_perc))
+# ggplot(bisnode, aes(salesgrowth_perc)) + geom_histogram() + facet_wrap(~ ind2)
+
+
+# companies
+bisnode [sales == 0,.N, by = ind2]
+bisnode [,.N, by = list(ind2, size_cat)]
+CrossTable(bisnode$ind2, bisnode$size_cat)
+CrossTable(bisnode$young_CEO, bisnode$size_cat)
+ggplot(bisnode, aes(ceo_age)) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of CEO age across company sizes", x = "Age of CEOs", y = "Count"))
+
+# comp_performance
+summary(bisnode$comp_performance)
+ggplot(bisnode, aes(comp_performance)) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of company performance across company sizes", x = "Company peformance", y = "Count"))
+ggplot(bisnode, aes(log(comp_performance))) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of log company performance across company sizes", x = "Log of company performance", y = "Count"))
+
+# ggplot(data = bisnode, aes(x=ceo_age, y=comp_performance)) +
+#  geom_point(colour="orange") +
+#  geom_smooth(method="lm", colour="navy") +
+#  ggtitle(labs(title = "Scatterplot of comp_performance CEO age", x = "Age of CEOs", y = "Company performance"))
+# ggplot(data = bisnode, aes(x=ceo_age, y=ceo_perfbase)) +
+#  geom_point(colour="orange") +
+#  geom_smooth(method="lm", colour="navy") +
+#  ggtitle(labs(title = "Scatterplot of CEO performance on CEO age", x = "Age of CEOs", y = "CEO performance"))
+
+# ggplot(data = bisnode, aes(x=ceo_age, y=comp_performance)) +
+#  geom_point(colour="orange") +
+#  geom_smooth(method="lm", colour="navy") + facet_wrap(~size_cat) +
+#  ggtitle(labs(title = "Scatterplot of company performance on CEO age", x = "Age of CEOs", y = "CEO performance"))
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(ceo_perfbase))) +
+  geom_point(size=1.5, aes(colour=factor(size_cat))) + geom_smooth(method="lm", colour="navy") + facet_wrap(~ind2) +
+  ggtitle(labs(title = "Scatterplot of CEO performance by form size", x = "Age of CEOs", y = "CEO performance")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1"))
+
+# ggplot(data = bisnode, aes(x=comp_age, y=comp_performance)) +
+#  geom_point(colour="orange") +
+#  geom_smooth(method="lm", colour="navy") + facet_wrap(~size_cat) +
+#  ggtitle(labs(title = "Scatterplot of company performance on company age", x = "Age of companies", y = "Company performance"))
+
+# CEO performance
+bisnode[, mean(ceo_perfbase), by = young_CEO]
+bisnode[, mean(ceo_perfbase), by = list(size_cat, young_CEO)]
+bisnode[, mean(ceo_perfbase), by = list(ind2, young_CEO)]
+bisnode[, median(ceo_perfbase), by = young_CEO]
+bisnode[, median(ceo_perfbase), by = list(size_cat, young_CEO)]
+ggplot(bisnode, aes(ceo_perfbase)) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of ceo performance across company sizes", x = "CEO peformance", y = "Count"))
+ggplot(bisnode, aes(log(ceo_perfbase))) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of log CEO performance across company sizes", x = "log of CEO peformance", y = "Count"))
+
+# 26 Manufacture of computer, electronic and optical products
+# 28 Manufacture of machinery and equipment n.e.c.
+# 33 Repair and installation of machinery and equipment
+# 55 Accommodation
+# 56 Food and beverage service activities
+
+ggplot(data = bisnode, aes(x=ceo_age, y=ceo_perfbase)) +
+  geom_point(colour="orange") +
+  geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot age and base performance of CEOs", x = "Age of CEOs", y = "Base performance of CEOs"))
+
+# CEO performance - SALES and SALESGROWTH_PERC
+summary(bisnode$sales_pastyear)
+summary(bisnode$sales)
+bisnode[, mean(sales), by = young_CEO]
+bisnode[, mean(sales), by = list(size_cat, young_CEO)]
+bisnode[, mean(sales), by = list(ind2, young_CEO)]
+bisnode[, median(sales), by = young_CEO]
+bisnode[, median(sales), by = list(size_cat, young_CEO)]
+
+bisnode[, mean(salesgrowth_perc), by = young_CEO]
+bisnode[, mean(salesgrowth_perc), by = list(size_cat, young_CEO)]
+bisnode[, mean(salesgrowth_perc), by = list(ind2, young_CEO)]
+bisnode[, median(salesgrowth_perc), by = young_CEO]
+bisnode[, median(salesgrowth_perc), by = list(size_cat, young_CEO)]
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(size_cat))) + geom_smooth(method="lm", colour="navy") + facet_wrap(~ind2) +
+  ggtitle(labs(title = "Scatterplot of sales growth on CEO age by firm size and industry", x = "Age of CEOs", y = "Sales growth")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1"))
+
+ggplot(bisnode, aes(salesgrowth_perc)) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of sales growth across company sizes", x = "Sales growth", y = "Count"))
+ggplot(bisnode, aes(log(salesgrowth_perc))) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of log sales growth across company sizes", x = "log of sales growth", y = "Count"))
+
+ggplot(bisnode, aes(sales)) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of sales across company sizes in 2015", x = "Sales", y = "Count"))
+ggplot(bisnode, aes(log(sales))) + geom_histogram() + facet_wrap(~ size_cat) +
+  ggtitle(labs(title = "Histogram of log sales growth across company sizes in 2015", x = "log of sales", y = "Count"))
+
+# Looking for patterns ...
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(size_cat))) + geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot of sales growth by form size", x = "Age of CEOs", y = "Sales growth")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1"))
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(ind2))) + geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot of sales growth by form size", x = "Age of CEOs", y = "Sales growth")) +
+  facet_wrap(~ size_cat) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1", "black"))
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(ind2))) + geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot of sales growth by industry", x = "Age of CEOs", y = "Sales growth")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1", "navy"))
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(gender))) + geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot of sales growth by gender", x = "Age of CEOs", y = "Sales growth")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1", "navy"))
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(region_m))) + geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot of sales growth by region", x = "Age of CEOs", y = "Sales growth")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1", "navy"))
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(origin))) + geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot of sales growth by origin", x = "Age of CEOs", y = "Sales growth")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1", "navy"))
+
+ggplot(data = bisnode, aes(x=ceo_age, y=log(salesgrowth_perc))) +
+  geom_point(size=1.5, aes(colour=factor(ceo_count))) + geom_smooth(method="lm", colour="navy") +
+  ggtitle(labs(title = "Scatterplot of sales growth by number of CEOs in management", x = "Age of CEOs", y = "Sales growth")) +
+  scale_colour_manual(name="Company size",values=c("darkgreen","indian red","lightcyan 4", "lightpink 1", "navy", "black", "orange"))
