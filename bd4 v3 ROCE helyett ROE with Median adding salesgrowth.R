@@ -360,6 +360,7 @@ coeftest (lm_IndSize_up, vcov = sandwich)
 
 BIC(lm_IndSize_up)
 
+
 ################## you can forget the two above attempts, this is below the Model 4 ########################
 # removing ceo_count and ceo origin
 
@@ -374,6 +375,13 @@ lm_IndSize_up <- lm (log(-ceo_perfbase) ~ D_dom_gender_Fem + D_CEO_y + D_ind2_56
 coeftest (lm_IndSize_up, vcov = sandwich)
 
 BIC(lm_IndSize_up)
+
+# Stargazer summing model 2 and 4
+
+stargazer(list(lm_IndAll_op, lm_IndSize_op), digits=3, type="text", out="ROE-model_2-4_1.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
+
+stargazer(list(lm_IndAll_up, lm_IndSize_up), digits=3, type="text", out="ROE-model_2-4_2.doc",no.space = TRUE, omit.stat=c("LL","ser","f", "aic"))
+
 ################## this is above the Model 4 ########################
 
 
